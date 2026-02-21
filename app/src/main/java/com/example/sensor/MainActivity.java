@@ -16,19 +16,23 @@ import android.widget.TextView;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 
 public class MainActivity extends Activity implements SensorEventListener {
 
     private SensorManager sensorManager;
     private Map<Integer, TextView> sensorValueViews = new HashMap<>();
-    private List<Sensor> sensorList;
+    private Sensor pressureSensor;
+    private TextView altitudeView;
+    private boolean initialPressureSet = false;
+    private double initialAltitude = 0.0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        sensorList = sensorManager.getSensorList(Sensor.TYPE_ALL);
+        pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackgroundColor(Color.parseColor("#121212"));
@@ -55,10 +59,17 @@ public class MainActivity extends Activity implements SensorEventListener {
         countView.setPadding(0, 0, 0, 32);
         mainLayout.addView(countView);
 
-        // Create views for each sensor
-        for (Sensor sensor : sensorList) {
-            LinearLayout sensorCard = createSensorCard(sensor);
+        // Create view for pressure sensor only
+        if (pressureSensor != null) {
+            LinearLayout sensorCard = createSensorCard(pressureSensor);
             mainLayout.addView(sensorCard);
+            altitudeView = sensorValueViews.get(Sensor.TYPE_PRESSURE);
+        } else {
+            TextView noPressure = new TextView(this);
+            noPressure.setText("気圧センサーが見つかりません");
+            noPressure.setTextColor(Color.RED);
+            noPressure.setPadding(0, 8, 0, 8);
+            mainLayout.addView(noPressure);
         }
 
         scrollView.addView(mainLayout);
@@ -149,8 +160,8 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     protected void onResume() {
         super.onResume();
-        for (Sensor sensor : sensorList) {
-            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_UI);
+        if (pressureSensor != null) {
+            sensorManager.registerListener(this, pressureSensor, SensorManager.SENSOR_DELAY_UI);
         }
     }
 
@@ -162,15 +173,27 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        TextView valueView = sensorValueViews.get(event.sensor.getType());
-        if (valueView != null) {
-            StringBuilder sb = new StringBuilder("データ: ");
-            for (int i = 0; i < event.values.length && i < 6; i++) {
-                if (i > 0) sb.append(" | ");
-                sb.append(String.format("%.4f", event.values[i]));
+        if (event.sensor.getType() == Sensor.TYPE_PRESSURE) {
+            TextView valueView = sensorValueViews.get(Sensor.TYPE_PRESSURE);
+            if (valueView != null && event.values != null && event.values.length > 0) {
+                float pressure = event.values[0]; // hPa
+                double currentAltitude = pressureToAltitude(pressure);
+                if (!initialPressureSet) {
+                    initialAltitude = currentAltitude;
+                    initialPressureSet = true;
+                }
+                double delta = currentAltitude - initialAltitude;
+                String text = String.format(Locale.getDefault(),
+                        "気圧: %.2f hPa\n高度: %.2f m\n起動時との差: %.2f m",
+                        pressure, currentAltitude, delta);
+                valueView.setText(text);
             }
-            valueView.setText(sb.toString());
         }
+    }
+
+    private double pressureToAltitude(double pressureHPa) {
+        // Convert hPa to meters using the barometric formula
+        return 44330.0 * (1.0 - Math.pow(pressureHPa / 1013.25, 1.0/5.255));
     }
 
     @Override
