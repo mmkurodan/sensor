@@ -14,7 +14,6 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Locale;
 
@@ -23,7 +22,12 @@ public class MainActivity extends Activity implements SensorEventListener {
     private SensorManager sensorManager;
     private Map<Integer, TextView> sensorValueViews = new HashMap<>();
     private Sensor pressureSensor;
+    private Sensor rotationSensor;
+    private Sensor gyroSensor;
     private TextView altitudeView;
+    private TextView azimuthView;
+    private TextView gyroView;
+    private CompassView compassView;
     private boolean initialPressureSet = false;
     private double initialAltitude = 0.0;
 
@@ -33,6 +37,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+        rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+        gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackgroundColor(Color.parseColor("#121212"));
@@ -62,6 +68,37 @@ public class MainActivity extends Activity implements SensorEventListener {
         countView.setTextColor(Color.parseColor("#AAAAAA"));
         countView.setPadding(0, 0, 0, 32);
         mainLayout.addView(countView);
+
+        // Compass header
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(0, 0, 0, 24);
+
+        compassView = new CompassView(this);
+        LinearLayout.LayoutParams compParams = new LinearLayout.LayoutParams(300, 300);
+        compParams.setMargins(0, 0, 24, 0);
+        compassView.setLayoutParams(compParams);
+        header.addView(compassView);
+
+        LinearLayout infoCol = new LinearLayout(this);
+        infoCol.setOrientation(LinearLayout.VERTICAL);
+
+        azimuthView = new TextView(this);
+        azimuthView.setText("方位: --°");
+        azimuthView.setTextSize(16);
+        azimuthView.setTextColor(Color.WHITE);
+        infoCol.addView(azimuthView);
+
+        gyroView = new TextView(this);
+        gyroView.setText("ジャイロ: x=-- y=-- z=--");
+        gyroView.setTextSize(14);
+        gyroView.setTextColor(Color.WHITE);
+        gyroView.setPadding(0, 8, 0, 0);
+        infoCol.addView(gyroView);
+
+        header.addView(infoCol);
+        mainLayout.addView(header);
 
         // Create view for pressure sensor only
         if (pressureSensor != null) {
@@ -164,8 +201,16 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     protected void onResume() {
         super.onResume();
-        if (pressureSensor != null) {
-            sensorManager.registerListener(this, pressureSensor, SensorManager.SENSOR_DELAY_UI);
+        if (sensorManager != null) {
+            if (pressureSensor != null) {
+                sensorManager.registerListener(this, pressureSensor, SensorManager.SENSOR_DELAY_UI);
+            }
+            if (rotationSensor != null) {
+                sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_UI);
+            }
+            if (gyroSensor != null) {
+                sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_UI);
+            }
         }
     }
 
@@ -177,7 +222,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        if (event.sensor.getType() == Sensor.TYPE_PRESSURE) {
+        int type = event.sensor.getType();
+        if (type == Sensor.TYPE_PRESSURE) {
             TextView valueView = sensorValueViews.get(Sensor.TYPE_PRESSURE);
             if (valueView != null && event.values != null && event.values.length > 0) {
                 float pressure = event.values[0]; // hPa
@@ -191,6 +237,23 @@ public class MainActivity extends Activity implements SensorEventListener {
                         "気圧: %.2f hPa\n高度: %.2f m\n起動時との差: %.2f m",
                         pressure, currentAltitude, delta);
                 valueView.setText(text);
+            }
+        } else if (type == Sensor.TYPE_ROTATION_VECTOR) {
+            if (compassView != null && azimuthView != null && event.values != null) {
+                float[] rotationMatrix = new float[9];
+                float[] orientation = new float[3];
+                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
+                SensorManager.getOrientation(rotationMatrix, orientation);
+                float azimuth = (float) Math.toDegrees(orientation[0]);
+                if (azimuth < 0) azimuth += 360;
+                compassView.setAzimuth(azimuth);
+                azimuthView.setText(String.format(Locale.getDefault(), "方位: %.0f°", azimuth));
+            }
+        } else if (type == Sensor.TYPE_GYROSCOPE) {
+            if (gyroView != null && event.values != null && event.values.length >= 3) {
+                gyroView.setText(String.format(Locale.getDefault(),
+                        "ジャイロ: x=%.3f y=%.3f z=%.3f (rad/s)",
+                        event.values[0], event.values[1], event.values[2]));
             }
         }
     }
