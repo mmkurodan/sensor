@@ -53,7 +53,11 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         // Sensor count
         TextView countView = new TextView(this);
-        countView.setText("検出センサー数: " + sensorList.size());
+        int detected = 0;
+        if (sensorManager != null) {
+            detected = sensorManager.getSensorList(Sensor.TYPE_ALL).size();
+        }
+        countView.setText("検出センサー数: " + detected);
         countView.setTextSize(16);
         countView.setTextColor(Color.parseColor("#AAAAAA"));
         countView.setPadding(0, 0, 0, 32);
