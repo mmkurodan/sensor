@@ -261,20 +261,12 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     private void initGpsLogging() {
-        File externalRoot = getExternalFilesDir(null);
-        File logDir = externalRoot != null ? new File(externalRoot, "logs") : new File(getFilesDir(), "logs");
-        if (!logDir.exists() && !logDir.mkdirs()) {
-            Log.e(GPS_LOG_TAG, "Failed to create GPS log directory: " + logDir.getAbsolutePath());
-        }
-        gpsLogFile = new File(logDir, GPS_LOG_FILE_NAME);
-        logGpsTrace("initGpsLogging: externalRoot="
-                + (externalRoot != null ? externalRoot.getAbsolutePath() : "null")
-                + ", logDir=" + logDir.getAbsolutePath()
-                + ", logFile=" + gpsLogFile.getAbsolutePath());
+        // GPS logging disabled by user request; do not create external log files.
+        gpsLogFile = null;
     }
 
     private String getGpsLogPath() {
-        return gpsLogFile != null ? gpsLogFile.getAbsolutePath() : "未作成";
+        return "ログ取得無効";
     }
 
     private void updateGpsStatusText(String text) {
@@ -284,19 +276,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     private void logGpsTrace(String message) {
-        String line = gpsLogTimeFormat.format(new Date())
-                + " [thread=" + Thread.currentThread().getName() + "] "
-                + message;
-        Log.d(GPS_LOG_TAG, line);
-        if (gpsLogFile == null) {
-            return;
-        }
-        try (FileWriter writer = new FileWriter(gpsLogFile, true)) {
-            writer.write(line);
-            writer.write('\n');
-        } catch (IOException e) {
-            Log.e(GPS_LOG_TAG, "Failed to write GPS log file.", e);
-        }
+        // GPS logging disabled by user request; no-op.
     }
 
     private void logLocationDetails(String prefix, Location location) {
