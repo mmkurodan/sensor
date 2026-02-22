@@ -1,44 +1,100 @@
 package com.example.sensor;
 
+import android.Manifest;
 import android.app.Activity;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Gravity;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends Activity implements SensorEventListener {
 
+    private static final int REQUEST_LOCATION_PERMISSION = 1001;
+    private static final String GPS_LOG_TAG = "GPS_TRACE";
+    private static final String GPS_LOG_FILE_NAME = "gps_trace.log";
+
     private SensorManager sensorManager;
-    private Map<Integer, TextView> sensorValueViews = new HashMap<>();
+    private final Map<Integer, TextView> sensorValueViews = new HashMap<>();
     private Sensor pressureSensor;
     private Sensor rotationSensor;
     private Sensor gyroSensor;
+    private LocationManager locationManager;
     private TextView altitudeView;
     private TextView azimuthView;
     private TextView gyroView;
+    private TextView gpsView;
     private CompassView compassView;
+    private File gpsLogFile;
     private boolean initialPressureSet = false;
+    private boolean gpsFixAcquired = false;
     private double initialAltitude = 0.0;
+    private final SimpleDateFormat gpsLogTimeFormat =
+            new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
+    private final LocationListener gpsLocationListener = new LocationListener() {
+        @Override
+        public void onLocationChanged(Location location) {
+            logLocationDetails("onLocationChanged", location);
+            if (!gpsFixAcquired && LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
+                gpsFixAcquired = true;
+                logGpsTrace("GPS fix acquired for the first time.");
+            }
+            updateGpsDisplay(location, false);
+        }
+
+        @Override
+        public void onProviderEnabled(String provider) {
+            logGpsTrace("onProviderEnabled: provider=" + provider);
+            updateGpsStatusText("GPS状態: プロバイダ有効化 (" + provider + ")\n取得待機中...\nログ: " + getGpsLogPath());
+        }
+
+        @Override
+        public void onProviderDisabled(String provider) {
+            logGpsTrace("onProviderDisabled: provider=" + provider);
+            updateGpsStatusText("GPS状態: プロバイダ無効 (" + provider + ")\nログ: " + getGpsLogPath());
+        }
+
+        @Override
+        public void onStatusChanged(String provider, int status, Bundle extras) {
+            logGpsTrace("onStatusChanged: provider=" + provider + ", status=" + status + ", extras=" + extras);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
-        rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
-        gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        if (sensorManager != null) {
+            pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
+            rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
+            gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        }
+        initGpsLogging();
+        logGpsTrace("onCreate: activity created. locationManager=" + (locationManager != null));
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackgroundColor(Color.parseColor("#121212"));
@@ -99,6 +155,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         header.addView(infoCol);
         mainLayout.addView(header);
+        mainLayout.addView(createGpsCard());
 
         // Create view for pressure sensor only
         if (pressureSensor != null) {
@@ -115,6 +172,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         scrollView.addView(mainLayout);
         setContentView(scrollView);
+        updateGpsStatusText("GPS状態: 初期化完了\n権限確認待ち...\nログ: " + getGpsLogPath());
     }
 
     private LinearLayout createSensorCard(Sensor sensor) {
@@ -166,6 +224,226 @@ public class MainActivity extends Activity implements SensorEventListener {
         return card;
     }
 
+    private LinearLayout createGpsCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setBackgroundColor(Color.parseColor("#1E1E1E"));
+        card.setPadding(24, 24, 24, 24);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        cardParams.setMargins(0, 0, 0, 16);
+        card.setLayoutParams(cardParams);
+
+        TextView titleView = new TextView(this);
+        titleView.setText("GPS");
+        titleView.setTextSize(16);
+        titleView.setTextColor(Color.parseColor("#4FC3F7"));
+        titleView.setTypeface(null, Typeface.BOLD);
+        card.addView(titleView);
+
+        TextView statusLabel = new TextView(this);
+        statusLabel.setText("位置情報 (緯度/経度/高度/精度)");
+        statusLabel.setTextSize(12);
+        statusLabel.setTextColor(Color.parseColor("#888888"));
+        statusLabel.setPadding(0, 4, 0, 8);
+        card.addView(statusLabel);
+
+        gpsView = new TextView(this);
+        gpsView.setText("GPS状態: 初期化中...\nログ: " + getGpsLogPath());
+        gpsView.setTextSize(14);
+        gpsView.setTextColor(Color.parseColor("#76FF03"));
+        gpsView.setTypeface(Typeface.MONOSPACE);
+        card.addView(gpsView);
+
+        return card;
+    }
+
+    private void initGpsLogging() {
+        File externalRoot = getExternalFilesDir(null);
+        File logDir = externalRoot != null ? new File(externalRoot, "logs") : new File(getFilesDir(), "logs");
+        if (!logDir.exists() && !logDir.mkdirs()) {
+            Log.e(GPS_LOG_TAG, "Failed to create GPS log directory: " + logDir.getAbsolutePath());
+        }
+        gpsLogFile = new File(logDir, GPS_LOG_FILE_NAME);
+        logGpsTrace("initGpsLogging: externalRoot="
+                + (externalRoot != null ? externalRoot.getAbsolutePath() : "null")
+                + ", logDir=" + logDir.getAbsolutePath()
+                + ", logFile=" + gpsLogFile.getAbsolutePath());
+    }
+
+    private String getGpsLogPath() {
+        return gpsLogFile != null ? gpsLogFile.getAbsolutePath() : "未作成";
+    }
+
+    private void updateGpsStatusText(String text) {
+        if (gpsView != null) {
+            gpsView.setText(text);
+        }
+    }
+
+    private void logGpsTrace(String message) {
+        String line = gpsLogTimeFormat.format(new Date())
+                + " [thread=" + Thread.currentThread().getName() + "] "
+                + message;
+        Log.d(GPS_LOG_TAG, line);
+        if (gpsLogFile == null) {
+            return;
+        }
+        try (FileWriter writer = new FileWriter(gpsLogFile, true)) {
+            writer.write(line);
+            writer.write('\n');
+        } catch (IOException e) {
+            Log.e(GPS_LOG_TAG, "Failed to write GPS log file.", e);
+        }
+    }
+
+    private void logLocationDetails(String prefix, Location location) {
+        if (location == null) {
+            logGpsTrace(prefix + ": location=null");
+            return;
+        }
+        String base = String.format(Locale.US,
+                "%s: provider=%s, lat=%.8f, lon=%.8f, time=%d, elapsedRealtimeNanos=%d, "
+                        + "hasAccuracy=%s, accuracy=%.3f, hasAltitude=%s, altitude=%.3f, "
+                        + "hasSpeed=%s, speed=%.3f, hasBearing=%s, bearing=%.3f",
+                prefix,
+                location.getProvider(),
+                location.getLatitude(),
+                location.getLongitude(),
+                location.getTime(),
+                location.getElapsedRealtimeNanos(),
+                location.hasAccuracy(),
+                location.hasAccuracy() ? location.getAccuracy() : -1f,
+                location.hasAltitude(),
+                location.hasAltitude() ? location.getAltitude() : -1d,
+                location.hasSpeed(),
+                location.hasSpeed() ? location.getSpeed() : -1f,
+                location.hasBearing(),
+                location.hasBearing() ? location.getBearing() : -1f);
+        logGpsTrace(base);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            logGpsTrace(String.format(Locale.US,
+                    "%s: hasVerticalAccuracy=%s, verticalAccuracy=%.3f, "
+                            + "hasSpeedAccuracy=%s, speedAccuracy=%.3f, "
+                            + "hasBearingAccuracy=%s, bearingAccuracy=%.3f",
+                    prefix,
+                    location.hasVerticalAccuracy(),
+                    location.hasVerticalAccuracy() ? location.getVerticalAccuracyMeters() : -1f,
+                    location.hasSpeedAccuracy(),
+                    location.hasSpeedAccuracy() ? location.getSpeedAccuracyMetersPerSecond() : -1f,
+                    location.hasBearingAccuracy(),
+                    location.hasBearingAccuracy() ? location.getBearingAccuracyDegrees() : -1f));
+        }
+        if (location.getExtras() != null) {
+            logGpsTrace(prefix + ": extras=" + location.getExtras());
+        }
+    }
+
+    private void updateGpsDisplay(Location location, boolean fromCache) {
+        if (location == null) {
+            return;
+        }
+        String altitudeText = location.hasAltitude()
+                ? String.format(Locale.getDefault(), "%.2f m", location.getAltitude())
+                : "--";
+        String accuracyText = location.hasAccuracy()
+                ? String.format(Locale.getDefault(), "%.2f m", location.getAccuracy())
+                : "--";
+        String speedText = location.hasSpeed()
+                ? String.format(Locale.getDefault(), "%.2f m/s", location.getSpeed())
+                : "--";
+        String bearingText = location.hasBearing()
+                ? String.format(Locale.getDefault(), "%.2f°", location.getBearing())
+                : "--";
+        String source = fromCache ? "キャッシュ" : "リアルタイム";
+        String text = String.format(Locale.getDefault(),
+                "GPS状態: %s\nプロバイダ: %s\n緯度: %.6f\n経度: %.6f\n高度: %s\n精度: %s\n速度: %s\n方位: %s\n時刻: %s\nログ: %s",
+                source,
+                location.getProvider(),
+                location.getLatitude(),
+                location.getLongitude(),
+                altitudeText,
+                accuracyText,
+                speedText,
+                bearingText,
+                gpsLogTimeFormat.format(new Date(location.getTime())),
+                getGpsLogPath());
+        updateGpsStatusText(text);
+    }
+
+    private void startGpsAcquisitionFlow() {
+        logGpsTrace("startGpsAcquisitionFlow: begin");
+        if (locationManager == null) {
+            updateGpsStatusText("GPS状態: LocationManager取得失敗\nログ: " + getGpsLogPath());
+            logGpsTrace("LocationManager is null.");
+            return;
+        }
+        int finePermission = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION);
+        int coarsePermission = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
+        logGpsTrace("Permission check: fine=" + finePermission + ", coarse=" + coarsePermission);
+        if (finePermission != PackageManager.PERMISSION_GRANTED) {
+            updateGpsStatusText("GPS状態: 位置情報権限要求中...\nログ: " + getGpsLogPath());
+            requestPermissions(
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    REQUEST_LOCATION_PERMISSION);
+            logGpsTrace("requestPermissions invoked.");
+            return;
+        }
+        subscribeGpsUpdates();
+    }
+
+    private void subscribeGpsUpdates() {
+        if (locationManager == null) {
+            return;
+        }
+        try {
+            boolean gpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+            boolean networkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+            logGpsTrace("Provider status: gpsEnabled=" + gpsEnabled + ", networkEnabled=" + networkEnabled);
+            if (!gpsEnabled) {
+                updateGpsStatusText("GPS状態: GPSプロバイダが無効です\n位置情報設定を有効化してください\nログ: " + getGpsLogPath());
+                return;
+            }
+            locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    1000L,
+                    0f,
+                    gpsLocationListener);
+            logGpsTrace("requestLocationUpdates registered for GPS provider.");
+
+            Location lastKnownGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            logLocationDetails("lastKnownGps", lastKnownGps);
+            if (lastKnownGps != null) {
+                updateGpsDisplay(lastKnownGps, true);
+            } else {
+                updateGpsStatusText("GPS状態: 測位待機中...\nログ: " + getGpsLogPath());
+            }
+        } catch (SecurityException e) {
+            logGpsTrace("subscribeGpsUpdates SecurityException: " + e.getMessage());
+            Log.e(GPS_LOG_TAG, "Failed to subscribe GPS updates.", e);
+            updateGpsStatusText("GPS状態: 位置情報アクセスエラー\nログ: " + getGpsLogPath());
+        }
+    }
+
+    private void stopGpsUpdates() {
+        if (locationManager == null) {
+            return;
+        }
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            logGpsTrace("stopGpsUpdates skipped: missing ACCESS_FINE_LOCATION permission.");
+            return;
+        }
+        try {
+            locationManager.removeUpdates(gpsLocationListener);
+            logGpsTrace("removeUpdates called for gpsLocationListener.");
+        } catch (SecurityException e) {
+            logGpsTrace("stopGpsUpdates SecurityException: " + e.getMessage());
+            Log.e(GPS_LOG_TAG, "Failed to stop GPS updates.", e);
+        }
+    }
+
     private String getSensorTypeName(int type) {
         switch (type) {
             case Sensor.TYPE_ACCELEROMETER: return "加速度計";
@@ -201,6 +479,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     protected void onResume() {
         super.onResume();
+        logGpsTrace("onResume called.");
         if (sensorManager != null) {
             if (pressureSensor != null) {
                 sensorManager.registerListener(this, pressureSensor, SensorManager.SENSOR_DELAY_UI);
@@ -212,12 +491,17 @@ public class MainActivity extends Activity implements SensorEventListener {
                 sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_UI);
             }
         }
+        startGpsAcquisitionFlow();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        sensorManager.unregisterListener(this);
+        logGpsTrace("onPause called.");
+        if (sensorManager != null) {
+            sensorManager.unregisterListener(this);
+        }
+        stopGpsUpdates();
     }
 
     @Override
@@ -266,5 +550,24 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         // Not used
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQUEST_LOCATION_PERMISSION) {
+            return;
+        }
+        logGpsTrace("onRequestPermissionsResult: permissions="
+                + Arrays.toString(permissions)
+                + ", grantResults="
+                + Arrays.toString(grantResults));
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            updateGpsStatusText("GPS状態: 権限許可済み、測位開始\nログ: " + getGpsLogPath());
+            subscribeGpsUpdates();
+        } else {
+            updateGpsStatusText("GPS状態: 権限が拒否されました\nログ: " + getGpsLogPath());
+            logGpsTrace("Location permission denied by user.");
+        }
     }
 }
