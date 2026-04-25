@@ -20,6 +20,38 @@
     </issue>
 
     <issue
+        id="CanvasSize"
+        severity="Warning"
+        message="Calling `Canvas.getWidth()` is usually wrong; you should be calling `getWidth()` instead"
+        category="Correctness"
+        priority="6"
+        summary="Wrong Canvas Size"
+        explanation="In a custom view&apos;s draw implementation, you should normally call `getWidth` and `getHeight` on the custom view itself, not on the `canvas` instance.&#xA;&#xA;Canvas width and height are the width and height of the `Canvas`, which is not always the same as size of the view.&#xA;&#xA;In the hardware accelerated path the width and height of the canvas typically always match that of the `View` because every view goes to its own recorded `DisplayList`. But in software rendering there&apos;s just one canvas that is clipped and transformed as it makes its way through the `View` tree, and otherwise remains the same `Canvas` object for every View&apos;s draw method.&#xA;&#xA;You should only use Canvas state to adjust how much you draw, such as a quick-reject for early work avoidance if it&apos;s going to be clipped away, but not what you draw."
+        errorLine1="        int width = canvas.getWidth();"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~">
+        <location
+            file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
+            line="122"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="CanvasSize"
+        severity="Warning"
+        message="Calling `Canvas.getHeight()` is usually wrong; you should be calling `getHeight()` instead"
+        category="Correctness"
+        priority="6"
+        summary="Wrong Canvas Size"
+        explanation="In a custom view&apos;s draw implementation, you should normally call `getWidth` and `getHeight` on the custom view itself, not on the `canvas` instance.&#xA;&#xA;Canvas width and height are the width and height of the `Canvas`, which is not always the same as size of the view.&#xA;&#xA;In the hardware accelerated path the width and height of the canvas typically always match that of the `View` because every view goes to its own recorded `DisplayList`. But in software rendering there&apos;s just one canvas that is clipped and transformed as it makes its way through the `View` tree, and otherwise remains the same `Canvas` object for every View&apos;s draw method.&#xA;&#xA;You should only use Canvas state to adjust how much you draw, such as a quick-reject for early work avoidance if it&apos;s going to be clipped away, but not what you draw."
+        errorLine1="        int height = canvas.getHeight();"
+        errorLine2="                     ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
+            line="123"
+            column="22"/>
+    </issue>
+
+    <issue
         id="DefaultLocale"
         severity="Warning"
         message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
@@ -33,7 +65,7 @@
         errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="48"
+            line="64"
             column="31"/>
     </issue>
 
@@ -95,12 +127,28 @@
         priority="9"
         summary="Memory allocations within drawing code"
         explanation="You should avoid allocating objects during a drawing or layout operation. These are called frequently, so a smooth UI can be interrupted by garbage collection pauses caused by the object allocations.&#xA;&#xA;The way this is generally handled is to allocate the needed objects up front and to reuse them for each drawing operation.&#xA;&#xA;Some methods allocate memory on your behalf (such as `Bitmap.create`), and these should be handled in the same way."
-        errorLine1="        RectF bgRect = new RectF(x - padding, y - padding, x + maxWidth + padding, "
-        errorLine2="                       ^">
+        errorLine1="        RectF handleRect = new RectF(0, handleTop, width, contentTop);"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="92"
-            column="24"/>
+            line="132"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="DrawAllocation"
+        severity="Warning"
+        message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)"
+        category="Performance"
+        priority="9"
+        summary="Memory allocations within drawing code"
+        explanation="You should avoid allocating objects during a drawing or layout operation. These are called frequently, so a smooth UI can be interrupted by garbage collection pauses caused by the object allocations.&#xA;&#xA;The way this is generally handled is to allocate the needed objects up front and to reuse them for each drawing operation.&#xA;&#xA;Some methods allocate memory on your behalf (such as `Bitmap.create`), and these should be handled in the same way."
+        errorLine1="            RectF contentRect = new RectF(0, contentTop, width, panelBottom);"
+        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
+            line="140"
+            column="33"/>
     </issue>
 
     <issue
@@ -133,7 +181,7 @@
         errorLine2="                   ~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="114"
+            line="184"
             column="20"/>
     </issue>
 

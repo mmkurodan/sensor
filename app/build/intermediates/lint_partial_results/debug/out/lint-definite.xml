@@ -16,17 +16,63 @@
     </incident>
 
     <incident
+        id="CanvasSize"
+        severity="warning"
+        message="Calling `Canvas.getWidth()` is usually wrong; you should be calling `getWidth()` instead">
+        <fix-replace
+            description="Call getWidth() instead"
+            oldPattern="(.*)getWidth"
+            replacement="">
+            <range
+                file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+                startOffset="3782"
+                endOffset="3799"/>
+        </fix-replace>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+            line="122"
+            column="21"
+            startOffset="3782"
+            endLine="122"
+            endColumn="38"
+            endOffset="3799"/>
+    </incident>
+
+    <incident
+        id="CanvasSize"
+        severity="warning"
+        message="Calling `Canvas.getHeight()` is usually wrong; you should be calling `getHeight()` instead">
+        <fix-replace
+            description="Call getHeight() instead"
+            oldPattern="(.*)getHeight"
+            replacement="">
+            <range
+                file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+                startOffset="3822"
+                endOffset="3840"/>
+        </fix-replace>
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+            line="123"
+            column="22"
+            startOffset="3822"
+            endLine="123"
+            endColumn="40"
+            endOffset="3840"/>
+    </incident>
+
+    <incident
         id="ClickableViewAccessibility"
         severity="warning"
         message="Custom view `SensorInfoOverlay` overrides `onTouchEvent` but not `performClick`">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="114"
+            line="184"
             column="20"
-            startOffset="3512"
-            endLine="114"
+            startOffset="5846"
+            endLine="184"
             endColumn="32"
-            endOffset="3524"/>
+            endOffset="5858"/>
     </incident>
 
     <incident
@@ -35,12 +81,12 @@
         message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="48"
+            line="64"
             column="31"
-            startOffset="1531"
-            endLine="48"
+            startOffset="2187"
+            endLine="64"
             endColumn="62"
-            endOffset="1562"/>
+            endOffset="2218"/>
     </incident>
 
     <incident
@@ -49,12 +95,26 @@
         message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="92"
-            column="24"
-            startOffset="2730"
-            endLine="93"
-            endColumn="91"
-            endOffset="2881"/>
+            line="132"
+            column="28"
+            startOffset="4114"
+            endLine="132"
+            endColumn="70"
+            endOffset="4156"/>
+    </incident>
+
+    <incident
+        id="DrawAllocation"
+        severity="warning"
+        message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+            line="140"
+            column="33"
+            startOffset="4447"
+            endLine="140"
+            endColumn="77"
+            endOffset="4491"/>
     </incident>
 
     <incident

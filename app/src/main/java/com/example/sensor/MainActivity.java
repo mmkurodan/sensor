@@ -15,10 +15,8 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.core.content.ContextCompat;
@@ -124,28 +122,12 @@ public class MainActivity extends Activity implements SensorEventListener {
         mapView.setLayoutParams(mapParams);
         mapContainer.addView(mapView);
 
-        // Toggle button for sensor info overlay
-        Button toggleButton = new Button(this);
-        toggleButton.setText("i");
-        toggleButton.setTextSize(20);
-        toggleButton.setTextColor(Color.WHITE);
-        toggleButton.setBackgroundColor(Color.parseColor("#4FC3F7"));
-        FrameLayout.LayoutParams toggleParams = new FrameLayout.LayoutParams(60, 60);
-        toggleParams.gravity = Gravity.TOP | Gravity.END;
-        toggleParams.setMargins(0, 16, 16, 0);
-        toggleButton.setLayoutParams(toggleParams);
-        toggleButton.setOnClickListener(v -> {
-            if (sensorInfoOverlay != null) {
-                sensorInfoOverlay.toggleVisibility();
-            }
-        });
-        mapContainer.addView(toggleButton);
-
-        // Sensor info overlay (semi-transparent)
+        // Sensor info overlay (bottom sheet style - full width)
         sensorInfoOverlay = new SensorInfoOverlay(this);
         FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT);
+        overlayParams.gravity = Gravity.BOTTOM;
         sensorInfoOverlay.setLayoutParams(overlayParams);
         mapContainer.addView(sensorInfoOverlay);
 
