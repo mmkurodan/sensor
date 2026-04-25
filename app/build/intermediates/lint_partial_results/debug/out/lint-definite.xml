@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.2.2" type="incidents">
+
+    <incident
+        id="DrawAllocation"
+        severity="warning"
+        message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/CompassView.java"
+            line="56"
+            column="21"
+            startOffset="1473"
+            endLine="56"
+            endColumn="31"
+            endOffset="1483"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
+            line="135"
+            column="27"
+            startOffset="4954"
+            endLine="135"
+            endColumn="49"
+            endOffset="4976"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
+            line="202"
+            column="26"
+            startOffset="7446"
+            endLine="202"
+            endColumn="71"
+            endOffset="7491"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
+            line="210"
+            column="28"
+            startOffset="7762"
+            endLine="210"
+            endColumn="96"
+            endOffset="7830"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
+            line="242"
+            column="27"
+            startOffset="8998"
+            endLine="242"
+            endColumn="32"
+            endOffset="9003"/>
+    </incident>
+
+    <incident
+        id="SetTextI18n"
+        severity="warning"
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
+            line="256"
+            column="25"
+            startOffset="9532"
+            endLine="256"
+            endColumn="41"
+            endOffset="9548"/>
+    </incident>
+
+    <incident
+        id="OldTargetApi"
+        severity="warning"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details.">
+        <fix-replace
+            description="Update targetSdkVersion to 35"
+            oldString="34"
+            replacement="35"/>
+        <location
+            file="${:app*projectDir}/build.gradle"
+            line="12"
+            column="9"
+            startOffset="199"
+            endLine="12"
+            endColumn="21"
+            endOffset="211"/>
+    </incident>
+
+    <incident
+        id="GradleDependency"
+        severity="warning"
+        message="A newer version of androidx.core:core than 1.13.1 is available: 1.18.0">
+        <fix-replace
+            description="Change to 1.18.0"
+            family="Update versions"
+            oldString="1.13.1"
+            replacement="1.18.0"/>
+        <location
+            file="${:app*projectDir}/build.gradle"
+            line="26"
+            column="20"
+            startOffset="445"
+            endLine="26"
+            endColumn="47"
+            endOffset="472"/>
+    </incident>
+
+</incidents>
