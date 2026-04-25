@@ -25,17 +25,17 @@
             replacement="">
             <range
                 file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-                startOffset="3782"
-                endOffset="3799"/>
+                startOffset="3666"
+                endOffset="3683"/>
         </fix-replace>
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="122"
+            line="117"
             column="21"
-            startOffset="3782"
-            endLine="122"
+            startOffset="3666"
+            endLine="117"
             endColumn="38"
-            endOffset="3799"/>
+            endOffset="3683"/>
     </incident>
 
     <incident
@@ -48,17 +48,17 @@
             replacement="">
             <range
                 file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-                startOffset="3822"
-                endOffset="3840"/>
+                startOffset="3706"
+                endOffset="3724"/>
         </fix-replace>
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="123"
+            line="118"
             column="22"
-            startOffset="3822"
-            endLine="123"
+            startOffset="3706"
+            endLine="118"
             endColumn="40"
-            endOffset="3840"/>
+            endOffset="3724"/>
     </incident>
 
     <incident
@@ -67,26 +67,12 @@
         message="Custom view `SensorInfoOverlay` overrides `onTouchEvent` but not `performClick`">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="184"
+            line="265"
             column="20"
-            startOffset="5846"
-            endLine="184"
+            startOffset="9756"
+            endLine="265"
             endColumn="32"
-            endOffset="5858"/>
-    </incident>
-
-    <incident
-        id="DefaultLocale"
-        severity="warning"
-        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead">
-        <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="64"
-            column="31"
-            startOffset="2187"
-            endLine="64"
-            endColumn="62"
-            endOffset="2218"/>
+            endOffset="9768"/>
     </incident>
 
     <incident
@@ -95,12 +81,26 @@
         message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="132"
+            line="126"
+            column="27"
+            startOffset="3945"
+            endLine="126"
+            endColumn="64"
+            endOffset="3982"/>
+    </incident>
+
+    <incident
+        id="DrawAllocation"
+        severity="warning"
+        message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+            line="137"
             column="28"
-            startOffset="4114"
-            endLine="132"
-            endColumn="70"
-            endOffset="4156"/>
+            startOffset="4315"
+            endLine="137"
+            endColumn="90"
+            endOffset="4377"/>
     </incident>
 
     <incident
@@ -109,12 +109,12 @@
         message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="140"
-            column="33"
-            startOffset="4447"
-            endLine="140"
-            endColumn="77"
-            endOffset="4491"/>
+            line="148"
+            column="34"
+            startOffset="4803"
+            endLine="148"
+            endColumn="97"
+            endOffset="4866"/>
     </incident>
 
     <incident

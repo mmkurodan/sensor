@@ -57,6 +57,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private float[] accelerometerValues;
     private float[] magneticValues;
     private float[] gyroValues;
+    private GeoPoint lastGpsLocation;
     private final LocationListener gpsLocationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
@@ -124,6 +125,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         // Sensor info overlay (bottom sheet style - full width)
         sensorInfoOverlay = new SensorInfoOverlay(this);
+        sensorInfoOverlay.setOnReturnToLocationClicked(new Runnable() {
+            @Override
+            public void run() {
+                if (lastGpsLocation != null && mapView != null) {
+                    mapView.getController().setCenter(lastGpsLocation);
+                }
+            }
+        });
         FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT);
@@ -145,6 +154,8 @@ public class MainActivity extends Activity implements SensorEventListener {
         if (location == null) {
             return;
         }
+        lastGpsLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
+        
         String altitudeText = location.hasAltitude()
                 ? String.format(Locale.getDefault(), "%.2f m", location.getAltitude())
                 : "--";
@@ -159,26 +170,24 @@ public class MainActivity extends Activity implements SensorEventListener {
                 : "--";
         String source = fromCache ? "キャッシュ" : "リアルタイム";
         String text = String.format(Locale.getDefault(),
-                "GPS状態: %s\nプロバイダ: %s\n緯度: %.6f\n経度: %.6f\n高度: %s\n精度: %s\n速度: %s\n方位: %s\n時刻: %s",
+                "GPS: %s\n緯度: %.6f  経度: %.6f\n高度: %s  精度: %s  速度: %s  方位: %s",
                 source,
-                location.getProvider(),
                 location.getLatitude(),
                 location.getLongitude(),
                 altitudeText,
                 accuracyText,
                 speedText,
-                bearingText,
-                String.valueOf(location.getTime()));
-        updateGpsStatusText(text);
-
+                bearingText);
+        
         if (mapView != null && gpsOverlay != null) {
             GeoPoint point = new GeoPoint(location.getLatitude(), location.getLongitude());
             gpsOverlay.removeAllItems();
             OverlayItem item = new OverlayItem("現在位置", "GPS取得", point);
             item.setMarker(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_mylocation));
             gpsOverlay.addItem(item);
-            mapView.getController().setCenter(point);
         }
+        
+        updateSensorInfoDisplay();
     }
 
     private void startGpsAcquisitionFlow() {
@@ -356,25 +365,34 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         List<String> sensorLines = new ArrayList<>();
 
+        // GPS Info (if available)
+        if (lastGpsLocation != null) {
+            sensorLines.add(String.format(Locale.getDefault(),
+                    "GPS: %.6f, %.6f",
+                    lastGpsLocation.getLatitude(),
+                    lastGpsLocation.getLongitude()));
+        }
+
         // Accelerometer
         if (accelerometerSensor != null) {
             sensorLines.add(String.format(Locale.getDefault(),
-                    "加速度: x=%.2f y=%.2f z=%.2f m/s²",
+                    "加速度: X=%.2f Y=%.2f Z=%.2f m/s²",
                     accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]));
         }
 
         // Magnetic field
         if (magneticSensor != null) {
             sensorLines.add(String.format(Locale.getDefault(),
-                    "磁場: x=%.1f y=%.1f z=%.1f µT",
+                    "磁場: X=%.1f Y=%.1f Z=%.1f µT",
                     magneticValues[0], magneticValues[1], magneticValues[2]));
         }
 
         // Gyroscope
         if (gyroSensor != null) {
             sensorLines.add(String.format(Locale.getDefault(),
-                    "ジャイロ: x=%.3f y=%.3f z=%.3f rad/s",
+                    "ジャイロ: X=%.3f Y=%.3f Z=%.3f rad/s",
                     gyroValues[0], gyroValues[1], gyroValues[2]));
+            sensorInfoOverlay.setGyroValues(gyroValues[0], gyroValues[1], gyroValues[2]);
         }
 
         sensorInfoOverlay.setSensorInfo(sensorLines);

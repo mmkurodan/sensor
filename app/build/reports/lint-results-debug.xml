@@ -31,7 +31,7 @@
         errorLine2="                    ~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="122"
+            line="117"
             column="21"/>
     </issue>
 
@@ -47,26 +47,8 @@
         errorLine2="                     ~~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="123"
+            line="118"
             column="22"/>
-    </issue>
-
-    <issue
-        id="DefaultLocale"
-        severity="Warning"
-        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead"
-        category="Correctness"
-        priority="6"
-        summary="Implied default locale in case conversion"
-        explanation="Calling `String#toLowerCase()` or `#toUpperCase()` **without specifying an explicit locale** is a common source of bugs. The reason for that is that those methods will use the current locale on the user&apos;s device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for `i` is **not** `I`.&#xA;&#xA;If you want the methods to just perform ASCII replacement, for example to convert an enum name, call `String#toUpperCase(Locale.US)` instead. If you really want to use the current locale, call `String#toUpperCase(Locale.getDefault())` instead."
-        url="https://developer.android.com/reference/java/util/Locale.html#default_locale"
-        urls="https://developer.android.com/reference/java/util/Locale.html#default_locale"
-        errorLine1="        this.compassAzimuth = String.format(&quot;%.0f°&quot;, azimuth);"
-        errorLine2="                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="64"
-            column="31"/>
     </issue>
 
     <issue
@@ -127,11 +109,27 @@
         priority="9"
         summary="Memory allocations within drawing code"
         explanation="You should avoid allocating objects during a drawing or layout operation. These are called frequently, so a smooth UI can be interrupted by garbage collection pauses caused by the object allocations.&#xA;&#xA;The way this is generally handled is to allocate the needed objects up front and to reuse them for each drawing operation.&#xA;&#xA;Some methods allocate memory on your behalf (such as `Bitmap.create`), and these should be handled in the same way."
-        errorLine1="        RectF handleRect = new RectF(0, handleTop, width, contentTop);"
-        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="        RectF panelRect = new RectF(0, panelTop, width, height);"
+        errorLine2="                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="132"
+            line="126"
+            column="27"/>
+    </issue>
+
+    <issue
+        id="DrawAllocation"
+        severity="Warning"
+        message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)"
+        category="Performance"
+        priority="9"
+        summary="Memory allocations within drawing code"
+        explanation="You should avoid allocating objects during a drawing or layout operation. These are called frequently, so a smooth UI can be interrupted by garbage collection pauses caused by the object allocations.&#xA;&#xA;The way this is generally handled is to allocate the needed objects up front and to reuse them for each drawing operation.&#xA;&#xA;Some methods allocate memory on your behalf (such as `Bitmap.create`), and these should be handled in the same way."
+        errorLine1="        toggleButtonRect = new RectF(width - 60, panelTop + 8, width - 12, panelTop + 40);"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
+            line="137"
             column="28"/>
     </issue>
 
@@ -143,12 +141,12 @@
         priority="9"
         summary="Memory allocations within drawing code"
         explanation="You should avoid allocating objects during a drawing or layout operation. These are called frequently, so a smooth UI can be interrupted by garbage collection pauses caused by the object allocations.&#xA;&#xA;The way this is generally handled is to allocate the needed objects up front and to reuse them for each drawing operation.&#xA;&#xA;Some methods allocate memory on your behalf (such as `Bitmap.create`), and these should be handled in the same way."
-        errorLine1="            RectF contentRect = new RectF(0, contentTop, width, panelBottom);"
-        errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        errorLine1="        RectF returnButtonRect = new RectF(width - 160, panelTop + 8, width - 68, panelTop + 40);"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="140"
-            column="33"/>
+            line="148"
+            column="34"/>
     </issue>
 
     <issue
@@ -181,7 +179,7 @@
         errorLine2="                   ~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="184"
+            line="265"
             column="20"/>
     </issue>
 

@@ -32,10 +32,10 @@
 
    https://goo.gle/android-storage-usecases
 
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:122: Warning: Calling Canvas.getWidth() is usually wrong; you should be calling getWidth() instead [CanvasSize]
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:117: Warning: Calling Canvas.getWidth() is usually wrong; you should be calling getWidth() instead [CanvasSize]
         int width = canvas.getWidth();
                     ~~~~~~~~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:123: Warning: Calling Canvas.getHeight() is usually wrong; you should be calling getHeight() instead [CanvasSize]
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:118: Warning: Calling Canvas.getHeight() is usually wrong; you should be calling getHeight() instead [CanvasSize]
         int height = canvas.getHeight();
                      ~~~~~~~~~~~~~~~~~~
 
@@ -55,25 +55,6 @@
    You should only use Canvas state to adjust how much you draw, such as a
    quick-reject for early work avoidance if it's going to be clipped away, but
    not what you draw.
-
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:64: Warning: Implicitly using the default locale is a common source of bugs: Use String.format(Locale, ...) instead [DefaultLocale]
-        this.compassAzimuth = String.format("%.0f°", azimuth);
-                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-   Explanation for issues of type "DefaultLocale":
-   Calling String#toLowerCase() or #toUpperCase() without specifying an
-   explicit locale is a common source of bugs. The reason for that is that
-   those methods will use the current locale on the user's device, and even
-   though the code appears to work correctly when you are developing the app,
-   it will fail in some locales. For example, in the Turkish locale, the
-   uppercase replacement for i is not I.
-
-   If you want the methods to just perform ASCII replacement, for example to
-   convert an enum name, call String#toUpperCase(Locale.US) instead. If you
-   really want to use the current locale, call
-   String#toUpperCase(Locale.getDefault()) instead.
-
-   https://developer.android.com/reference/java/util/Locale.html#default_locale
 
 /root/sensor/app/build.gradle:12: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
         targetSdk 34
@@ -111,12 +92,15 @@
 /root/sensor/app/src/main/java/com/example/sensor/CompassView.java:56: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
         Path path = new Path();
                     ~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:132: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
-        RectF handleRect = new RectF(0, handleTop, width, contentTop);
-                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:140: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
-            RectF contentRect = new RectF(0, contentTop, width, panelBottom);
-                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:126: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
+        RectF panelRect = new RectF(0, panelTop, width, height);
+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:137: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
+        toggleButtonRect = new RectF(width - 60, panelTop + 8, width - 12, panelTop + 40);
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:148: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
+        RectF returnButtonRect = new RectF(width - 160, panelTop + 8, width - 68, panelTop + 40);
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
    Explanation for issues of type "DrawAllocation":
    You should avoid allocating objects during a drawing or layout operation.
@@ -140,7 +124,7 @@
 
    https://developer.android.com/studio/publish/preparing#publishing-configure
 
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:184: Warning: Custom view SensorInfoOverlay overrides onTouchEvent but not performClick [ClickableViewAccessibility]
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:265: Warning: Custom view SensorInfoOverlay overrides onTouchEvent but not performClick [ClickableViewAccessibility]
     public boolean onTouchEvent(MotionEvent event) {
                    ~~~~~~~~~~~~
 

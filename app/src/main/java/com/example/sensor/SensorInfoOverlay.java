@@ -8,29 +8,30 @@ import android.graphics.Path;
 import android.graphics.RectF;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.DecelerateInterpolator;
 import android.os.Handler;
 import android.os.Looper;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class SensorInfoOverlay extends View {
     private Paint backgroundPaint;
     private Paint textPaint;
     private Paint titlePaint;
-    private Paint arrowPaint;
+    private Paint buttonPaint;
+    private Paint buttonTextPaint;
+    private Paint circlePaint;
+    private Paint needlePaint;
+    private Paint labelPaint;
     private List<String> sensorInfoLines = new ArrayList<>();
     private String compassAzimuth = "--°";
-    private boolean expanded = false;
-    private float scrollOffset = 0;
-    private float lastY = 0;
-    private float dragStartY = 0;
-    private static final float PANEL_HEIGHT = 250;
-    private static final float HANDLE_HEIGHT = 50;
-    private float panelOffset = 0;
-    private Handler animationHandler = new Handler(Looper.getMainLooper());
-    private static final int ANIMATION_DURATION = 300;
-    private int screenHeight = 0;
+    private float[] gyroValues = new float[3];
+    private boolean visible = true;
+    private static final float PANEL_HEIGHT_RATIO = 0.33f;
+    private float screenHeight = 0;
+    private float screenWidth = 0;
+    private RectF toggleButtonRect;
+    private Runnable onReturnToLocationClicked;
 
     public SensorInfoOverlay(Context context) {
         super(context);
@@ -42,123 +43,206 @@ public class SensorInfoOverlay extends View {
         backgroundPaint.setColor(Color.parseColor("#DD1E1E1E"));
         backgroundPaint.setStyle(Paint.Style.FILL);
 
-        arrowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        arrowPaint.setColor(Color.parseColor("#4FC3F7"));
-        arrowPaint.setStyle(Paint.Style.FILL);
-        arrowPaint.setStrokeWidth(2);
-
         titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         titlePaint.setColor(Color.parseColor("#4FC3F7"));
-        titlePaint.setTextSize(16);
+        titlePaint.setTextSize(24);
         titlePaint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
 
         textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         textPaint.setColor(Color.parseColor("#76FF03"));
-        textPaint.setTextSize(13);
+        textPaint.setTextSize(18);
         textPaint.setTypeface(android.graphics.Typeface.MONOSPACE);
 
-        panelOffset = PANEL_HEIGHT;
+        buttonPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        buttonPaint.setColor(Color.parseColor("#4FC3F7"));
+        buttonPaint.setStyle(Paint.Style.STROKE);
+        buttonPaint.setStrokeWidth(2);
+
+        buttonTextPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        buttonTextPaint.setColor(Color.parseColor("#4FC3F7"));
+        buttonTextPaint.setTextSize(14);
+        buttonTextPaint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+
+        circlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        circlePaint.setColor(Color.parseColor("#2E2E2E"));
+        circlePaint.setStyle(Paint.Style.FILL);
+
+        needlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        needlePaint.setColor(Color.parseColor("#FF6B6B"));
+        needlePaint.setStyle(Paint.Style.FILL);
+
+        labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        labelPaint.setColor(Color.parseColor("#AAAAAA"));
+        labelPaint.setTextSize(12);
     }
 
     public void setCompassAzimuth(float azimuth) {
-        this.compassAzimuth = String.format("%.0f°", azimuth);
+        this.compassAzimuth = String.format(Locale.getDefault(), "%.0f°", azimuth);
+        invalidate();
+    }
+
+    public void setGyroValues(float x, float y, float z) {
+        gyroValues[0] = x;
+        gyroValues[1] = y;
+        gyroValues[2] = z;
         invalidate();
     }
 
     public void setSensorInfo(List<String> lines) {
         this.sensorInfoLines = new ArrayList<>(lines);
-        scrollOffset = 0;
         invalidate();
     }
 
     public void toggleVisibility() {
-        if (expanded) {
-            collapse();
-        } else {
-            expand();
-        }
+        visible = !visible;
+        invalidate();
     }
 
-    private void expand() {
-        expanded = true;
-        animateTo(0);
-    }
-
-    private void collapse() {
-        expanded = false;
-        animateTo(PANEL_HEIGHT);
-    }
-
-    private void animateTo(float targetOffset) {
-        animationHandler.removeCallbacksAndMessages(null);
-        final float startOffset = panelOffset;
-        final long startTime = System.currentTimeMillis();
-        final DecelerateInterpolator interpolator = new DecelerateInterpolator();
-
-        animationHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                long elapsed = System.currentTimeMillis() - startTime;
-                float progress = Math.min(1.0f, (float) elapsed / ANIMATION_DURATION);
-                progress = interpolator.getInterpolation(progress);
-                panelOffset = startOffset + (targetOffset - startOffset) * progress;
-                invalidate();
-
-                if (progress < 1.0f) {
-                    animationHandler.post(this);
-                }
-            }
-        });
+    public void setOnReturnToLocationClicked(Runnable callback) {
+        this.onReturnToLocationClicked = callback;
     }
 
     public boolean isVisible() {
-        return expanded;
+        return visible;
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
 
+        if (!visible) {
+            return;
+        }
+
         int width = canvas.getWidth();
         int height = canvas.getHeight();
+        screenWidth = width;
         screenHeight = height;
 
-        float panelTop = height - panelOffset;
-        float handleTop = panelTop;
-        float contentTop = handleTop + HANDLE_HEIGHT;
-        float panelBottom = height;
+        float panelHeight = height * PANEL_HEIGHT_RATIO;
+        float panelTop = height - panelHeight;
 
-        // Draw handle area with arrow
-        RectF handleRect = new RectF(0, handleTop, width, contentTop);
-        canvas.drawRect(handleRect, backgroundPaint);
+        // Draw background
+        RectF panelRect = new RectF(0, panelTop, width, height);
+        canvas.drawRect(panelRect, backgroundPaint);
 
-        // Draw arrow
-        drawArrow(canvas, width / 2, handleTop + HANDLE_HEIGHT / 2, expanded);
+        int padding = 16;
+        int lineHeight = 28;
+        float yPos = panelTop + padding;
 
-        // Draw content area (visible only when expanded)
-        if (panelOffset < PANEL_HEIGHT) {
-            RectF contentRect = new RectF(0, contentTop, width, panelBottom);
-            canvas.drawRect(contentRect, backgroundPaint);
+        // Draw title and toggle button
+        canvas.drawText("センサー情報", padding, yPos, titlePaint);
+        
+        // Draw toggle button (X to hide)
+        toggleButtonRect = new RectF(width - 60, panelTop + 8, width - 12, panelTop + 40);
+        canvas.drawRect(toggleButtonRect, buttonPaint);
+        canvas.drawText("Hide", toggleButtonRect.left + 8, toggleButtonRect.centerY() + 5, buttonTextPaint);
 
-            int padding = 12;
-            int lineHeight = 20;
+        yPos += lineHeight + 8;
 
-            // Draw title
-            int textY = (int) (contentTop + padding + 20);
-            canvas.drawText("センサー情報", padding, textY, titlePaint);
+        // Draw GPS info and return button in a row
+        if (sensorInfoLines.size() > 0) {
+            canvas.drawText(sensorInfoLines.get(0), padding, yPos, textPaint);
+        }
+        
+        RectF returnButtonRect = new RectF(width - 160, panelTop + 8, width - 68, panelTop + 40);
+        canvas.drawRect(returnButtonRect, buttonPaint);
+        canvas.drawText("▶ Location", returnButtonRect.left + 6, returnButtonRect.centerY() + 5, buttonTextPaint);
 
-            // Draw compass azimuth
-            textY += lineHeight;
-            canvas.drawText("方位: " + compassAzimuth, padding, textY, textPaint);
+        yPos += lineHeight;
 
-            // Draw sensor lines
-            for (String line : sensorInfoLines) {
-                textY += lineHeight;
-                if (textY < panelBottom - 10) {
-                    canvas.drawText(line, padding, textY, textPaint);
-                }
+        // Draw remaining sensor info
+        for (int i = 1; i < sensorInfoLines.size(); i++) {
+            if (yPos < height - 20) {
+                canvas.drawText(sensorInfoLines.get(i), padding, yPos, textPaint);
+                yPos += lineHeight;
             }
         }
+
+        // Draw compass and gyro visualizations
+        float visualStartY = panelTop + lineHeight * 2 + 40;
+        drawCompassVisual(canvas, width / 4, visualStartY);
+        drawGyroVisual(canvas, 3 * width / 4, visualStartY);
+    }
+
+    private void drawCompassVisual(Canvas canvas, float centerX, float centerY) {
+        float radius = 45;
+
+        // Draw circle
+        canvas.drawCircle(centerX, centerY, radius, circlePaint);
+
+        // Draw cardinal directions
+        Paint directionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        directionPaint.setColor(Color.parseColor("#AAAAAA"));
+        directionPaint.setTextSize(14);
+        canvas.drawText("N", centerX - 6, centerY - radius - 8, directionPaint);
+        canvas.drawText("S", centerX - 6, centerY + radius + 16, directionPaint);
+        canvas.drawText("E", centerX + radius - 4, centerY + 6, directionPaint);
+        canvas.drawText("W", centerX - radius - 12, centerY + 6, directionPaint);
+
+        // Draw needle based on azimuth
+        try {
+            float azimuthVal = Float.parseFloat(compassAzimuth.replace("°", ""));
+            canvas.save();
+            canvas.rotate(-azimuthVal, centerX, centerY);
+            
+            Path needlePath = new Path();
+            needlePath.moveTo(centerX, centerY - radius * 0.7f);
+            needlePath.lineTo(centerX - radius * 0.12f, centerY + radius * 0.4f);
+            needlePath.lineTo(centerX + radius * 0.12f, centerY + radius * 0.4f);
+            needlePath.close();
+            canvas.drawPath(needlePath, needlePaint);
+            
+            canvas.restore();
+        } catch (Exception e) {
+            // Default needle pointing up
+            Path needlePath = new Path();
+            needlePath.moveTo(centerX, centerY - radius * 0.7f);
+            needlePath.lineTo(centerX - radius * 0.12f, centerY + radius * 0.4f);
+            needlePath.lineTo(centerX + radius * 0.12f, centerY + radius * 0.4f);
+            needlePath.close();
+            canvas.drawPath(needlePath, needlePaint);
+        }
+
+        // Draw label
+        Paint labelPaint2 = new Paint(Paint.ANTI_ALIAS_FLAG);
+        labelPaint2.setColor(Color.parseColor("#AAAAAA"));
+        labelPaint2.setTextSize(12);
+        canvas.drawText("コンパス: " + compassAzimuth, centerX - 40, centerY + radius + 35, labelPaint2);
+    }
+
+    private void drawGyroVisual(Canvas canvas, float centerX, float centerY) {
+        float radius = 45;
+
+        // Draw background circle
+        canvas.drawCircle(centerX, centerY, radius, circlePaint);
+
+        // Draw crosshair
+        Paint crosshairPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        crosshairPaint.setColor(Color.parseColor("#666666"));
+        crosshairPaint.setStrokeWidth(1);
+        canvas.drawLine(centerX - radius, centerY, centerX + radius, centerY, crosshairPaint);
+        canvas.drawLine(centerX, centerY - radius, centerX, centerY + radius, crosshairPaint);
+
+        // Draw gyro vector
+        float maxValue = 3.0f;
+        float x = (gyroValues[0] / maxValue) * radius * 0.8f;
+        float y = (gyroValues[1] / maxValue) * radius * 0.8f;
+        
+        Paint gyroPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        gyroPaint.setColor(Color.parseColor("#FFD700"));
+        gyroPaint.setStrokeWidth(3);
+        canvas.drawLine(centerX, centerY, centerX + x, centerY + y, gyroPaint);
+        canvas.drawCircle(centerX + x, centerY + y, 4, gyroPaint);
+
+        // Draw label
+        Paint labelPaint2 = new Paint(Paint.ANTI_ALIAS_FLAG);
+        labelPaint2.setColor(Color.parseColor("#AAAAAA"));
+        labelPaint2.setTextSize(12);
+        String gyroText = String.format(Locale.getDefault(),
+                "ジャイロ\nX:%.2f Y:%.2f\nZ:%.2f", 
+                gyroValues[0], gyroValues[1], gyroValues[2]);
+        canvas.drawText(gyroText, centerX - 40, centerY + radius + 35, labelPaint2);
     }
 
     private void drawArrow(Canvas canvas, float x, float y, boolean pointUp) {
@@ -166,64 +250,37 @@ public class SensorInfoOverlay extends View {
         float size = 12;
 
         if (pointUp) {
-            // Up arrow
             path.moveTo(x, y - size / 2);
             path.lineTo(x - size / 2, y + size / 2);
             path.lineTo(x + size / 2, y + size / 2);
         } else {
-            // Down arrow
             path.moveTo(x, y + size / 2);
             path.lineTo(x - size / 2, y - size / 2);
             path.lineTo(x + size / 2, y - size / 2);
         }
         path.close();
-        canvas.drawPath(path, arrowPaint);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (screenHeight == 0) screenHeight = getHeight();
-        
-        float panelTop = screenHeight - panelOffset;
-        float panelBottom = screenHeight;
-
-        // Only handle touch events within the panel area
-        if (event.getY() < panelTop) {
-            return false; // Let MapView handle touches above the panel
-        }
-
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                dragStartY = event.getY();
-                lastY = dragStartY;
-                animationHandler.removeCallbacksAndMessages(null);
-                return true;
-
-            case MotionEvent.ACTION_MOVE:
-                float dy = event.getY() - lastY;
-                panelOffset -= dy;
-                panelOffset = Math.max(0, Math.min(panelOffset, PANEL_HEIGHT));
-                lastY = event.getY();
-                invalidate();
-                return true;
-
-            case MotionEvent.ACTION_UP:
-                float totalDrag = dragStartY - event.getY();
-                if (Math.abs(totalDrag) > HANDLE_HEIGHT / 3) {
-                    if (totalDrag > 0) {
-                        expand();
-                    } else {
-                        collapse();
-                    }
-                } else {
-                    // Snap to nearest state
-                    if (panelOffset < PANEL_HEIGHT / 2) {
-                        expand();
-                    } else {
-                        collapse();
-                    }
+                // Check if toggle button was pressed
+                if (toggleButtonRect != null && toggleButtonRect.contains(event.getX(), event.getY())) {
+                    toggleVisibility();
+                    return true;
                 }
-                return true;
+                
+                // Check if return to location button was pressed
+                if (event.getX() > screenWidth - 160 && event.getX() < screenWidth - 68 &&
+                    event.getY() > screenHeight - screenHeight * PANEL_HEIGHT_RATIO + 8 &&
+                    event.getY() < screenHeight - screenHeight * PANEL_HEIGHT_RATIO + 40) {
+                    if (onReturnToLocationClicked != null) {
+                        onReturnToLocationClicked.run();
+                    }
+                    return true;
+                }
+                return false;
         }
         return super.onTouchEvent(event);
     }
