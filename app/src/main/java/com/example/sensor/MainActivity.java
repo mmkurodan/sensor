@@ -368,9 +368,11 @@ public class MainActivity extends Activity implements SensorEventListener {
         // GPS Info (if available)
         if (lastGpsLocation != null) {
             sensorLines.add(String.format(Locale.getDefault(),
-                    "GPS: %.6f, %.6f",
+                    "位置情報: %.6f, %.6f",
                     lastGpsLocation.getLatitude(),
                     lastGpsLocation.getLongitude()));
+        } else {
+            sensorLines.add("位置情報: 取得待機中");
         }
 
         // Accelerometer
@@ -389,9 +391,6 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         // Gyroscope
         if (gyroSensor != null) {
-            sensorLines.add(String.format(Locale.getDefault(),
-                    "ジャイロ: X=%.3f Y=%.3f Z=%.3f rad/s",
-                    gyroValues[0], gyroValues[1], gyroValues[2]));
             sensorInfoOverlay.setGyroValues(gyroValues[0], gyroValues[1], gyroValues[2]);
         }
 
