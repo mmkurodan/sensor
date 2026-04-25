@@ -31,6 +31,11 @@ public class SensorInfoOverlay extends View {
     private final Paint axisPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint directionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint southMarkerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint altitudeBackgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint altitudeStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint altitudeFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint altitudeLabelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final List<String> sensorInfoLines = new ArrayList<>();
     private final float[] gyroValues = new float[3];
     private final RectF panelRect = new RectF();
@@ -41,6 +46,7 @@ public class SensorInfoOverlay extends View {
     private final float scaledDensity;
 
     private float compassAzimuth = Float.NaN;
+    private double altitude = Double.NaN;
     private boolean visible = true;
     private Runnable onReturnToLocationClicked;
 
@@ -97,10 +103,32 @@ public class SensorInfoOverlay extends View {
         directionPaint.setColor(Color.parseColor("#AAAAAA"));
         directionPaint.setTextSize(sp(12));
         directionPaint.setTypeface(Typeface.DEFAULT_BOLD);
+
+        southMarkerPaint.setColor(Color.WHITE);
+        southMarkerPaint.setStyle(Paint.Style.FILL);
+
+        altitudeBackgroundPaint.setColor(Color.parseColor("#2E2E2E"));
+        altitudeBackgroundPaint.setStyle(Paint.Style.FILL);
+
+        altitudeStrokePaint.setColor(Color.parseColor("#4FC3F7"));
+        altitudeStrokePaint.setStyle(Paint.Style.STROKE);
+        altitudeStrokePaint.setStrokeWidth(dp(2));
+
+        altitudeFillPaint.setColor(Color.parseColor("#FF9800"));
+        altitudeFillPaint.setStyle(Paint.Style.FILL);
+
+        altitudeLabelPaint.setColor(Color.parseColor("#4FC3F7"));
+        altitudeLabelPaint.setTextSize(sp(11));
+        altitudeLabelPaint.setTypeface(Typeface.MONOSPACE);
     }
 
     public void setCompassAzimuth(float azimuth) {
         compassAzimuth = azimuth;
+        invalidate();
+    }
+
+    public void setAltitude(double alt) {
+        altitude = alt;
         invalidate();
     }
 
@@ -171,6 +199,7 @@ public class SensorInfoOverlay extends View {
             float labelHeight = labelPaint.getFontSpacing();
             float visualSize = width * VISUAL_SIZE_RATIO;
             float visualLabelHeight = labelHeight * 3f + dp(8);
+            float altitudeGaugeHeight = visualSize * 0.6f;
             float detailBlockHeight = sensorInfoLines.size() > 1
                     ? sectionSpacing + (sensorInfoLines.size() - 1) * detailHeight
                     : 0f;
@@ -181,6 +210,8 @@ public class SensorInfoOverlay extends View {
                     + sectionSpacing
                     + visualSize
                     + visualLabelHeight
+                    + altitudeGaugeHeight
+                    + sectionSpacing
                     + detailBlockHeight
                     + panelPadding;
 
@@ -217,8 +248,11 @@ public class SensorInfoOverlay extends View {
                     labelPaint
             );
 
+            float altitudeTop = labelTop + labelHeight * 3f + sectionSpacing;
+            drawAltitudeGauge(canvas, panelPadding, altitudeTop, width - panelPadding * 2f, altitudeGaugeHeight);
+
             if (sensorInfoLines.size() > 1) {
-                float detailTop = labelTop + labelHeight * 3f + sectionSpacing;
+                float detailTop = altitudeTop + altitudeGaugeHeight + sectionSpacing;
                 for (int i = 1; i < sensorInfoLines.size(); i++) {
                     float detailBaseline = detailTop - detailPaint.ascent();
                     canvas.drawText(sensorInfoLines.get(i), panelPadding, detailBaseline, detailPaint);
@@ -242,6 +276,15 @@ public class SensorInfoOverlay extends View {
         drawCenteredText(canvas, "S", centerX, centerY + radius + labelOffset, directionPaint);
         drawCenteredText(canvas, "E", centerX + radius + labelOffset, centerY, directionPaint);
         drawCenteredText(canvas, "W", centerX - radius - labelOffset, centerY, directionPaint);
+
+        // Draw white south marker triangle
+        Path southMarkerPath = new Path();
+        float markerSize = radius * 0.12f;
+        southMarkerPath.moveTo(centerX, centerY + radius - markerSize);
+        southMarkerPath.lineTo(centerX - markerSize * 0.6f, centerY + radius + markerSize * 0.4f);
+        southMarkerPath.lineTo(centerX + markerSize * 0.6f, centerY + radius + markerSize * 0.4f);
+        southMarkerPath.close();
+        canvas.drawPath(southMarkerPath, southMarkerPaint);
 
         canvas.save();
         if (!Float.isNaN(compassAzimuth)) {
@@ -270,6 +313,38 @@ public class SensorInfoOverlay extends View {
         canvas.drawLine(centerX, centerY - radius, centerX, centerY + radius, axisPaint);
         canvas.drawLine(centerX, centerY, centerX + x, centerY + y, needlePaint);
         canvas.drawCircle(centerX + x, centerY + y, dp(4), needlePaint);
+    }
+
+    private void drawAltitudeGauge(Canvas canvas, float left, float top, float width, float height) {
+        float maxAltitude = 3000.0f;
+        float barHeight = height * 0.6f;
+        float labelHeight = height * 0.4f;
+        
+        float barLeft = left + dp(10);
+        float barRight = left + width - dp(10);
+        float barTop = top + dp(4);
+        float barBottom = barTop + barHeight;
+        
+        RectF barBackground = new RectF(barLeft, barTop, barRight, barBottom);
+        canvas.drawRoundRect(barBackground, dp(4), dp(4), altitudeBackgroundPaint);
+        canvas.drawRoundRect(barBackground, dp(4), dp(4), altitudeStrokePaint);
+        
+        if (!Double.isNaN(altitude) && altitude >= 0) {
+            float fillRatio = (float) Math.min(altitude / maxAltitude, 1.0);
+            float fillWidth = (barRight - barLeft) * fillRatio;
+            RectF barFill = new RectF(barLeft, barTop, barLeft + fillWidth, barBottom);
+            canvas.drawRoundRect(barFill, dp(4), dp(4), altitudeFillPaint);
+            
+            String altText = String.format(Locale.getDefault(), "高度: %.1f m", altitude);
+            float textX = barLeft + dp(8);
+            float textY = barBottom + labelHeight * 0.8f;
+            canvas.drawText(altText, textX, textY, altitudeLabelPaint);
+        } else {
+            String noAltText = "高度: 取得待機中";
+            float textX = barLeft + dp(8);
+            float textY = barBottom + labelHeight * 0.8f;
+            canvas.drawText(noAltText, textX, textY, altitudeLabelPaint);
+        }
     }
 
     private void drawButton(Canvas canvas, RectF rect, String label, float cornerRadius) {

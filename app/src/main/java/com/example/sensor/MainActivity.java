@@ -156,6 +156,10 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
         lastGpsLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
         
+        if (sensorInfoOverlay != null && location.hasAltitude()) {
+            sensorInfoOverlay.setAltitude(location.getAltitude());
+        }
+        
         String altitudeText = location.hasAltitude()
                 ? String.format(Locale.getDefault(), "%.2f m", location.getAltitude())
                 : "--";
