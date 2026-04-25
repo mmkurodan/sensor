@@ -19,8 +19,19 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
+import org.osmdroid.config.Configuration;
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.ItemizedIconOverlay;
+import org.osmdroid.views.overlay.OverlayItem;
+import org.osmdroid.util.GeoPoint;
+
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -30,18 +41,16 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private SensorManager sensorManager;
     private final Map<Integer, TextView> sensorValueViews = new HashMap<>();
-    private Sensor pressureSensor;
     private Sensor rotationSensor;
     private Sensor gyroSensor;
     private LocationManager locationManager;
-    private TextView altitudeView;
     private TextView azimuthView;
     private TextView gyroView;
     private TextView gpsView;
     private CompassView compassView;
-    private boolean initialPressureSet = false;
     private boolean gpsFixAcquired = false;
-    private double initialAltitude = 0.0;
+    private MapView mapView;
+    private ItemizedIconOverlay<OverlayItem> gpsOverlay;
     private final LocationListener gpsLocationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
@@ -71,13 +80,34 @@ public class MainActivity extends Activity implements SensorEventListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Configuration.getInstance().setUserAgentValue(getApplicationContext().getPackageName());
+
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         if (sensorManager != null) {
-            pressureSensor = sensorManager.getDefaultSensor(Sensor.TYPE_PRESSURE);
             rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
             gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
         }
+
+        LinearLayout mainContainer = new LinearLayout(this);
+        mainContainer.setOrientation(LinearLayout.VERTICAL);
+        mainContainer.setBackgroundColor(Color.parseColor("#121212"));
+
+        mapView = new MapView(this);
+        mapView.setTileSource(TileSourceFactory.MAPNIK);
+        mapView.setMultiTouchControls(true);
+        GeoPoint startPoint = new GeoPoint(35.6762, 139.6503);
+        mapView.getController().setZoom(14);
+        mapView.getController().setCenter(startPoint);
+
+        List<OverlayItem> items = new ArrayList<>();
+        gpsOverlay = new ItemizedIconOverlay<>(items, null, getApplicationContext());
+        mapView.getOverlays().add(gpsOverlay);
+
+        LinearLayout.LayoutParams mapParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 400);
+        mapView.setLayoutParams(mapParams);
+        mainContainer.addView(mapView);
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setBackgroundColor(Color.parseColor("#121212"));
@@ -140,21 +170,10 @@ public class MainActivity extends Activity implements SensorEventListener {
         mainLayout.addView(header);
         mainLayout.addView(createGpsCard());
 
-        // Create view for pressure sensor only
-        if (pressureSensor != null) {
-            LinearLayout sensorCard = createSensorCard(pressureSensor);
-            mainLayout.addView(sensorCard);
-            altitudeView = sensorValueViews.get(Sensor.TYPE_PRESSURE);
-        } else {
-            TextView noPressure = new TextView(this);
-            noPressure.setText("気圧センサーが見つかりません");
-            noPressure.setTextColor(Color.RED);
-            noPressure.setPadding(0, 8, 0, 8);
-            mainLayout.addView(noPressure);
-        }
-
         scrollView.addView(mainLayout);
-        setContentView(scrollView);
+
+        mainContainer.addView(scrollView);
+        setContentView(mainContainer);
         updateGpsStatusText("GPS状態: 初期化完了\n権限確認待ち...");
     }
 
@@ -282,6 +301,15 @@ public class MainActivity extends Activity implements SensorEventListener {
                 bearingText,
                 String.valueOf(location.getTime()));
         updateGpsStatusText(text);
+
+        if (mapView != null && gpsOverlay != null) {
+            GeoPoint point = new GeoPoint(location.getLatitude(), location.getLongitude());
+            gpsOverlay.removeAllItems();
+            OverlayItem item = new OverlayItem("現在位置", "GPS取得", point);
+            item.setMarker(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_mylocation));
+            gpsOverlay.addItem(item);
+            mapView.getController().setCenter(point);
+        }
     }
 
     private void startGpsAcquisitionFlow() {
@@ -377,10 +405,10 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     protected void onResume() {
         super.onResume();
+        if (mapView != null) {
+            mapView.onResume();
+        }
         if (sensorManager != null) {
-            if (pressureSensor != null) {
-                sensorManager.registerListener(this, pressureSensor, SensorManager.SENSOR_DELAY_UI);
-            }
             if (rotationSensor != null) {
                 sensorManager.registerListener(this, rotationSensor, SensorManager.SENSOR_DELAY_UI);
             }
@@ -394,6 +422,9 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     protected void onPause() {
         super.onPause();
+        if (mapView != null) {
+            mapView.onPause();
+        }
         if (sensorManager != null) {
             sensorManager.unregisterListener(this);
         }
@@ -403,22 +434,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     @Override
     public void onSensorChanged(SensorEvent event) {
         int type = event.sensor.getType();
-        if (type == Sensor.TYPE_PRESSURE) {
-            TextView valueView = sensorValueViews.get(Sensor.TYPE_PRESSURE);
-            if (valueView != null && event.values != null && event.values.length > 0) {
-                float pressure = event.values[0]; // hPa
-                double currentAltitude = pressureToAltitude(pressure);
-                if (!initialPressureSet) {
-                    initialAltitude = currentAltitude;
-                    initialPressureSet = true;
-                }
-                double delta = currentAltitude - initialAltitude;
-                String text = String.format(Locale.getDefault(),
-                        "気圧: %.2f hPa\n高度: %.2f m\n起動時との差: %.2f m",
-                        pressure, currentAltitude, delta);
-                valueView.setText(text);
-            }
-        } else if (type == Sensor.TYPE_ROTATION_VECTOR) {
+        if (type == Sensor.TYPE_ROTATION_VECTOR) {
             if (compassView != null && azimuthView != null && event.values != null) {
                 float[] rotationMatrix = new float[9];
                 float[] orientation = new float[3];
@@ -436,11 +452,6 @@ public class MainActivity extends Activity implements SensorEventListener {
                         event.values[0], event.values[1], event.values[2]));
             }
         }
-    }
-
-    private double pressureToAltitude(double pressureHPa) {
-        // Convert hPa to meters using the barometric formula
-        return 44330.0 * (1.0 - Math.pow(pressureHPa / 1013.25, 1.0/5.255));
     }
 
     @Override
