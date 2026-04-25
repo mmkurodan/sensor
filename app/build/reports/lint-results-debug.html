@@ -177,9 +177,9 @@ document.getElementById(id).style.display = 'none';
 <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
   <header class="mdl-layout__header">
     <div class="mdl-layout__header-row">
-      <span class="mdl-layout-title">Lint Report: 10 warnings</span>
+      <span class="mdl-layout-title">Lint Report: 8 warnings</span>
       <div class="mdl-layout-spacer"></div>
-      <nav class="mdl-navigation mdl-layout--large-screen-only">Check performed at Sat Apr 25 08:15:17 UTC 2026 by AGP (8.2.2)</nav>
+      <nav class="mdl-navigation mdl-layout--large-screen-only">Check performed at Sat Apr 25 09:28:49 UTC 2026 by AGP (8.2.2)</nav>
     </div>
   </header>
   <div class="mdl-layout__drawer">
@@ -187,11 +187,12 @@ document.getElementById(id).style.display = 'none';
     <nav class="mdl-navigation">
       <a class="mdl-navigation__link" href="#overview"><i class="material-icons">dashboard</i>Overview</a>
       <a class="mdl-navigation__link" href="#ScopedStorage"><i class="material-icons warning-icon">warning</i>Affected by scoped storage (1)</a>
+      <a class="mdl-navigation__link" href="#DefaultLocale"><i class="material-icons warning-icon">warning</i>Implied default locale in case conversion (1)</a>
       <a class="mdl-navigation__link" href="#OldTargetApi"><i class="material-icons warning-icon">warning</i>Target SDK attribute is not targeting latest version (1)</a>
       <a class="mdl-navigation__link" href="#GradleDependency"><i class="material-icons warning-icon">warning</i>Obsolete Gradle Dependency (1)</a>
-      <a class="mdl-navigation__link" href="#DrawAllocation"><i class="material-icons warning-icon">warning</i>Memory allocations within drawing code (1)</a>
+      <a class="mdl-navigation__link" href="#DrawAllocation"><i class="material-icons warning-icon">warning</i>Memory allocations within drawing code (2)</a>
       <a class="mdl-navigation__link" href="#MissingApplicationIcon"><i class="material-icons warning-icon">warning</i>Missing application icon (1)</a>
-      <a class="mdl-navigation__link" href="#SetTextI18n"><i class="material-icons warning-icon">warning</i>TextView Internationalization (5)</a>
+      <a class="mdl-navigation__link" href="#ClickableViewAccessibility"><i class="material-icons warning-icon">warning</i>Accessibility in Custom Views (1)</a>
     </nav>
   </div>
   <main class="mdl-layout__content">
@@ -211,6 +212,9 @@ document.getElementById(id).style.display = 'none';
 <a href="#ScopedStorage">ScopedStorage</a>: Affected by scoped storage</td></tr>
 <tr>
 <td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
+<a href="#DefaultLocale">DefaultLocale</a>: Implied default locale in case conversion</td></tr>
+<tr>
+<td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
 <a href="#OldTargetApi">OldTargetApi</a>: Target SDK attribute is not targeting latest version</td></tr>
 <tr>
 <td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
@@ -218,18 +222,18 @@ document.getElementById(id).style.display = 'none';
 <tr><td class="countColumn"></td><td class="categoryColumn"><a href="#Performance">Performance</a>
 </td></tr>
 <tr>
-<td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
+<td class="countColumn">2</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
 <a href="#DrawAllocation">DrawAllocation</a>: Memory allocations within drawing code</td></tr>
 <tr><td class="countColumn"></td><td class="categoryColumn"><a href="#Usability:Icons">Usability:Icons</a>
 </td></tr>
 <tr>
 <td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
 <a href="#MissingApplicationIcon">MissingApplicationIcon</a>: Missing application icon</td></tr>
-<tr><td class="countColumn"></td><td class="categoryColumn"><a href="#Internationalization">Internationalization</a>
+<tr><td class="countColumn"></td><td class="categoryColumn"><a href="#Accessibility">Accessibility</a>
 </td></tr>
 <tr>
-<td class="countColumn">5</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
-<a href="#SetTextI18n">SetTextI18n</a>: TextView Internationalization</td></tr>
+<td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
+<a href="#ClickableViewAccessibility">ClickableViewAccessibility</a>: Accessibility in Custom Views</td></tr>
 <tr><td></td><td class="categoryColumn"><a href="#ExtraIssues">Included Additional Checks (6)</a>
 </td></tr>
 <tr><td></td><td class="categoryColumn"><a href="#MissingIssues">Disabled Checks (39)</a>
@@ -296,6 +300,54 @@ To learn more, read these resources: Play policy: <a href="https://goo.gle/polic
               <div class="mdl-card__actions mdl-card--border">
 <button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="explanationScopedStorageLink" onclick="reveal('explanationScopedStorage');">
 Explain</button><button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="ScopedStorageCardLink" onclick="hideid('ScopedStorageCard');">
+Dismiss</button>            </div>
+            </div>
+          </section><a name="DefaultLocale"></a>
+<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp" id="DefaultLocaleCard" style="display: block;">
+            <div class="mdl-card mdl-cell mdl-cell--12-col">
+  <div class="mdl-card__title">
+    <h2 class="mdl-card__title-text">Implied default locale in case conversion</h2>
+  </div>
+              <div class="mdl-card__supporting-text">
+<div class="issue">
+<div class="warningslist">
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:48</span>: <span class="message">Implicitly using the default locale is a common source of bugs: Use <code>String.format(Locale, ...)</code> instead</span><br /><pre class="errorlines">
+<span class="lineno">  45 </span>    }
+<span class="lineno">  46 </span>
+<span class="lineno">  47 </span>    <span class="keyword">public</span> <span class="keyword">void</span> setCompassAzimuth(<span class="keyword">float</span> azimuth) {
+<span class="caretline"><span class="lineno">  48 </span>        <span class="keyword">this</span>.compassAzimuth = <span class="warning">String.format(<span class="string">"%.0f°"</span>, azimuth)</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno">  49 </span>        invalidate();
+<span class="lineno">  50 </span>    }
+</pre>
+
+</div>
+<div class="metadata"><div class="explanation" id="explanationDefaultLocale" style="display: none;">
+Calling <code>String#toLowerCase()</code> or <code>#toUpperCase()</code> <b>without specifying an explicit locale</b> is a common source of bugs. The reason for that is that those methods will use the current locale on the user's device, and even though the code appears to work correctly when you are developing the app, it will fail in some locales. For example, in the Turkish locale, the uppercase replacement for <code>i</code> is <b>not</b> <code>I</code>.<br/>
+<br/>
+If you want the methods to just perform ASCII replacement, for example to convert an enum name, call <code>String#toUpperCase(Locale.US)</code> instead. If you really want to use the current locale, call <code>String#toUpperCase(Locale.getDefault())</code> instead.<br/><div class="moreinfo">More info: <a href="https://developer.android.com/reference/java/util/Locale.html#default_locale">https://developer.android.com/reference/java/util/Locale.html#default_locale</a>
+</div>Note: This issue has an associated quickfix operation in Android Studio and IntelliJ IDEA.<br>
+To suppress this error, use the issue id "DefaultLocale" as explained in the <a href="#SuppressInfo">Suppressing Warnings and Errors</a> section.<br/>
+<br/></div>
+</div>
+</div>
+<div class="chips">
+<span class="mdl-chip">
+    <span class="mdl-chip__text">DefaultLocale</span>
+</span>
+<span class="mdl-chip">
+    <span class="mdl-chip__text">Correctness</span>
+</span>
+<span class="mdl-chip">
+    <span class="mdl-chip__text">Warning</span>
+</span>
+<span class="mdl-chip">
+    <span class="mdl-chip__text">Priority 6/10</span>
+</span>
+</div>
+              </div>
+              <div class="mdl-card__actions mdl-card--border">
+<button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="explanationDefaultLocaleLink" onclick="reveal('explanationDefaultLocale');">
+Explain</button><button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="DefaultLocaleCardLink" onclick="hideid('DefaultLocaleCard');">
 Dismiss</button>            </div>
             </div>
           </section><a name="OldTargetApi"></a>
@@ -414,6 +466,15 @@ Dismiss</button>            </div>
 <span class="lineno"> 59 </span>        path.lineTo(cx + r * <span class="number">0.15f</span>, cy + r * <span class="number">0.5f</span>);
 </pre>
 
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:92</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
+<span class="lineno">  89 </span>       scrollOffset = Math.max(<span class="number">0</span>, Math.min(scrollOffset, maxScroll));
+<span class="lineno">  90 </span>
+<span class="lineno">  91 </span>       <span class="comment">// Draw semi-transparent background</span>
+<span class="caretline"><span class="lineno">  92 </span>       RectF bgRect = <span class="warning"><span class="keyword">new</span> RectF(x - padding, y - padding, x + maxWidth + padding, </span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno">  93 </span>                                 Math.min(y + contentHeight + padding, height - padding));
+<span class="lineno">  94 </span>       canvas.drawRoundRect(bgRect, <span class="number">8</span>, <span class="number">8</span>, backgroundPaint);
+</pre>
+
 </div>
 <div class="metadata"><div class="explanation" id="explanationDrawAllocation" style="display: none;">
 You should avoid allocating objects during a drawing or layout operation. These are called frequently, so a smooth UI can be interrupted by garbage collection pauses caused by the object allocations.<br/>
@@ -496,82 +557,38 @@ Explain</button><button class="mdl-button mdl-js-button mdl-js-ripple-effect" id
 Dismiss</button>            </div>
             </div>
           </section>
-<a name="Internationalization"></a>
-<a name="SetTextI18n"></a>
-<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp" id="SetTextI18nCard" style="display: block;">
+<a name="Accessibility"></a>
+<a name="ClickableViewAccessibility"></a>
+<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp" id="ClickableViewAccessibilityCard" style="display: block;">
             <div class="mdl-card mdl-cell mdl-cell--12-col">
   <div class="mdl-card__title">
-    <h2 class="mdl-card__title-text">TextView Internationalization</h2>
+    <h2 class="mdl-card__title-text">Accessibility in Custom Views</h2>
   </div>
               <div class="mdl-card__supporting-text">
 <div class="issue">
 <div class="warningslist">
-<span class="location"><a href="../../src/main/java/com/example/sensor/MainActivity.java">../../src/main/java/com/example/sensor/MainActivity.java</a>:135</span>: <span class="message">Do not concatenate text displayed with <code>setText</code>. Use resource string with placeholders.</span><br /><pre class="errorlines">
-<span class="lineno"> 132 </span>        <span class="keyword">if</span> (sensorManager != <span class="keyword">null</span>) {
-<span class="lineno"> 133 </span>            detected = sensorManager.getSensorList(Sensor.TYPE_ALL).size();
-<span class="lineno"> 134 </span>        }
-<span class="caretline"><span class="lineno"> 135 </span>        countView.setText(<span class="warning"><span class="string">"検出センサー数: "</span> + detected</span>);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 136 </span>        countView.setTextSize(<span class="number">16</span>);
-<span class="lineno"> 137 </span>        countView.setTextColor(Color.parseColor(<span class="string">"#AAAAAA"</span>));
-<span class="lineno"> 138 </span>        countView.setPadding(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">32</span>);
-</pre>
-
-<span class="location"><a href="../../src/main/java/com/example/sensor/MainActivity.java">../../src/main/java/com/example/sensor/MainActivity.java</a>:202</span>: <span class="message">Do not concatenate text displayed with <code>setText</code>. Use resource string with placeholders.</span><br /><pre class="errorlines">
-<span class="lineno"> 199 </span>
-<span class="lineno"> 200 </span>        <span class="comment">// Sensor type</span>
-<span class="lineno"> 201 </span>        TextView typeView = <span class="keyword">new</span> TextView(<span class="keyword">this</span>);
-<span class="caretline"><span class="lineno"> 202 </span>        typeView.setText(<span class="warning"><span class="string">"タイプ: "</span> + getSensorTypeName(sensor.getType())</span>);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 203 </span>        typeView.setTextSize(<span class="number">12</span>);
-<span class="lineno"> 204 </span>        typeView.setTextColor(Color.parseColor(<span class="string">"#888888"</span>));
-<span class="lineno"> 205 </span>        typeView.setPadding(<span class="number">0</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">8</span>);
-</pre>
-
-<span class="location"><a href="../../src/main/java/com/example/sensor/MainActivity.java">../../src/main/java/com/example/sensor/MainActivity.java</a>:210</span>: <span class="message">Do not concatenate text displayed with <code>setText</code>. Use resource string with placeholders.</span><br /><pre class="errorlines">
-<span class="lineno"> 207 </span>
-<span class="lineno"> 208 </span>  <span class="comment">// Vendor info</span>
-<span class="lineno"> 209 </span>  TextView vendorView = <span class="keyword">new</span> TextView(<span class="keyword">this</span>);
-<span class="caretline"><span class="lineno"> 210 </span>  vendorView.setText(<span class="warning"><span class="string">"ベンダー: "</span> + sensor.getVendor() + <span class="string">" | 範囲: "</span> + sensor.getMaximumRange()</span>);&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 211 </span>  vendorView.setTextSize(<span class="number">11</span>);
-<span class="lineno"> 212 </span>  vendorView.setTextColor(Color.parseColor(<span class="string">"#666666"</span>));
-<span class="lineno"> 213 </span>  vendorView.setPadding(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">8</span>);
-</pre>
-
-<span class="location"><a href="../../src/main/java/com/example/sensor/MainActivity.java">../../src/main/java/com/example/sensor/MainActivity.java</a>:242</span>: <span class="message">String literal in <code>setText</code> can not be translated. Use Android resources instead.</span><br /><pre class="errorlines">
-<span class="lineno"> 239 </span>        card.setLayoutParams(cardParams);
-<span class="lineno"> 240 </span>
-<span class="lineno"> 241 </span>        TextView titleView = <span class="keyword">new</span> TextView(<span class="keyword">this</span>);
-<span class="caretline"><span class="lineno"> 242 </span>        titleView.setText(<span class="warning"><span class="string">"GPS"</span></span>);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 243 </span>        titleView.setTextSize(<span class="number">16</span>);
-<span class="lineno"> 244 </span>        titleView.setTextColor(Color.parseColor(<span class="string">"#4FC3F7"</span>));
-<span class="lineno"> 245 </span>        titleView.setTypeface(<span class="keyword">null</span>, Typeface.BOLD);
-</pre>
-
-<span class="location"><a href="../../src/main/java/com/example/sensor/MainActivity.java">../../src/main/java/com/example/sensor/MainActivity.java</a>:256</span>: <span class="message">String literal in <code>setText</code> can not be translated. Use Android resources instead.</span><br /><pre class="errorlines">
-<span class="lineno"> 253 </span>        card.addView(statusLabel);
-<span class="lineno"> 254 </span>
-<span class="lineno"> 255 </span>        gpsView = <span class="keyword">new</span> TextView(<span class="keyword">this</span>);
-<span class="caretline"><span class="lineno"> 256 </span>        gpsView.setText(<span class="warning"><span class="string">"GPS状態: 初期化中..."</span></span>);&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 257 </span>        gpsView.setTextSize(<span class="number">14</span>);
-<span class="lineno"> 258 </span>        gpsView.setTextColor(Color.parseColor(<span class="string">"#76FF03"</span>));
-<span class="lineno"> 259 </span>        gpsView.setTypeface(Typeface.MONOSPACE);
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:114</span>: <span class="message">Custom view <code>SensorInfoOverlay</code> overrides <code>onTouchEvent</code> but not <code>performClick</code></span><br /><pre class="errorlines">
+<span class="lineno"> 111 </span>    }
+<span class="lineno"> 112 </span>
+<span class="lineno"> 113 </span>    <span class="annotation">@Override</span>
+<span class="caretline"><span class="lineno"> 114 </span>    <span class="keyword">public</span> <span class="keyword">boolean</span> <span class="warning">onTouchEvent</span>(MotionEvent event) {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno"> 115 </span>        <span class="keyword">switch</span> (event.getAction()) {
+<span class="lineno"> 116 </span>            <span class="keyword">case</span> MotionEvent.ACTION_DOWN:
+<span class="lineno"> 117 </span>                lastY = event.getY();
 </pre>
 
 </div>
-<div class="metadata"><div class="explanation" id="explanationSetTextI18n" style="display: none;">
-When calling <code>TextView#setText</code><br/>
-* Never call <code>Number#toString()</code> to format numbers; it will not handle fraction separators and locale-specific digits properly. Consider using <code>String#format</code> with proper format specifications (<code>%d</code> or <code>%f</code>) instead.<br/>
-* Do not pass a string literal (e.g. "Hello") to display text. Hardcoded text can not be properly translated to other languages. Consider using Android resource strings instead.<br/>
-* Do not build messages by concatenating text chunks. Such messages can not be properly translated.<br/><div class="moreinfo">More info: <a href="https://developer.android.com/guide/topics/resources/localization.html">https://developer.android.com/guide/topics/resources/localization.html</a>
-</div>To suppress this error, use the issue id "SetTextI18n" as explained in the <a href="#SuppressInfo">Suppressing Warnings and Errors</a> section.<br/>
+<div class="metadata"><div class="explanation" id="explanationClickableViewAccessibility" style="display: none;">
+If a <code>View</code> that overrides <code>onTouchEvent</code> or uses an <code>OnTouchListener</code> does not also implement <code>performClick</code> and call it when clicks are detected, the <code>View</code> may not handle accessibility actions properly. Logic handling the click actions should ideally be placed in <code>View#performClick</code> as some accessibility services invoke <code>performClick</code> when a click action should occur.<br/>To suppress this error, use the issue id "ClickableViewAccessibility" as explained in the <a href="#SuppressInfo">Suppressing Warnings and Errors</a> section.<br/>
 <br/></div>
 </div>
 </div>
 <div class="chips">
 <span class="mdl-chip">
-    <span class="mdl-chip__text">SetTextI18n</span>
+    <span class="mdl-chip__text">ClickableViewAccessibility</span>
 </span>
 <span class="mdl-chip">
-    <span class="mdl-chip__text">Internationalization</span>
+    <span class="mdl-chip__text">Accessibility</span>
 </span>
 <span class="mdl-chip">
     <span class="mdl-chip__text">Warning</span>
@@ -582,8 +599,8 @@ When calling <code>TextView#setText</code><br/>
 </div>
               </div>
               <div class="mdl-card__actions mdl-card--border">
-<button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="explanationSetTextI18nLink" onclick="reveal('explanationSetTextI18n');">
-Explain</button><button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="SetTextI18nCardLink" onclick="hideid('SetTextI18nCard');">
+<button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="explanationClickableViewAccessibilityLink" onclick="reveal('explanationClickableViewAccessibility');">
+Explain</button><button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="ClickableViewAccessibilityCardLink" onclick="hideid('ClickableViewAccessibilityCard');">
 Dismiss</button>            </div>
             </div>
           </section>

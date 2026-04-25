@@ -32,6 +32,25 @@
 
    https://goo.gle/android-storage-usecases
 
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:48: Warning: Implicitly using the default locale is a common source of bugs: Use String.format(Locale, ...) instead [DefaultLocale]
+        this.compassAzimuth = String.format("%.0f°", azimuth);
+                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "DefaultLocale":
+   Calling String#toLowerCase() or #toUpperCase() without specifying an
+   explicit locale is a common source of bugs. The reason for that is that
+   those methods will use the current locale on the user's device, and even
+   though the code appears to work correctly when you are developing the app,
+   it will fail in some locales. For example, in the Turkish locale, the
+   uppercase replacement for i is not I.
+
+   If you want the methods to just perform ASCII replacement, for example to
+   convert an enum name, call String#toUpperCase(Locale.US) instead. If you
+   really want to use the current locale, call
+   String#toUpperCase(Locale.getDefault()) instead.
+
+   https://developer.android.com/reference/java/util/Locale.html#default_locale
+
 /root/sensor/app/build.gradle:12: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
         targetSdk 34
         ~~~~~~~~~~~~
@@ -68,6 +87,9 @@
 /root/sensor/app/src/main/java/com/example/sensor/CompassView.java:56: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
         Path path = new Path();
                     ~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:92: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
+        RectF bgRect = new RectF(x - padding, y - padding, x + maxWidth + padding, 
+                       ^
 
    Explanation for issues of type "DrawAllocation":
    You should avoid allocating objects during a drawing or layout operation.
@@ -91,33 +113,15 @@
 
    https://developer.android.com/studio/publish/preparing#publishing-configure
 
-/root/sensor/app/src/main/java/com/example/sensor/MainActivity.java:135: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
-        countView.setText("検出センサー数: " + detected);
-                          ~~~~~~~~~~~~~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/MainActivity.java:202: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
-        typeView.setText("タイプ: " + getSensorTypeName(sensor.getType()));
-                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/MainActivity.java:210: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
-        vendorView.setText("ベンダー: " + sensor.getVendor() + " | 範囲: " + sensor.getMaximumRange());
-                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/MainActivity.java:242: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
-        titleView.setText("GPS");
-                          ~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/MainActivity.java:256: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
-        gpsView.setText("GPS状態: 初期化中...");
-                        ~~~~~~~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:114: Warning: Custom view SensorInfoOverlay overrides onTouchEvent but not performClick [ClickableViewAccessibility]
+    public boolean onTouchEvent(MotionEvent event) {
+                   ~~~~~~~~~~~~
 
-   Explanation for issues of type "SetTextI18n":
-   When calling TextView#setText
-   * Never call Number#toString() to format numbers; it will not handle
-   fraction separators and locale-specific digits properly. Consider using
-   String#format with proper format specifications (%d or %f) instead.
-   * Do not pass a string literal (e.g. "Hello") to display text. Hardcoded
-   text can not be properly translated to other languages. Consider using
-   Android resource strings instead.
-   * Do not build messages by concatenating text chunks. Such messages can not
-   be properly translated.
+   Explanation for issues of type "ClickableViewAccessibility":
+   If a View that overrides onTouchEvent or uses an OnTouchListener does not
+   also implement performClick and call it when clicks are detected, the View
+   may not handle accessibility actions properly. Logic handling the click
+   actions should ideally be placed in View#performClick as some accessibility
+   services invoke performClick when a click action should occur.
 
-   https://developer.android.com/guide/topics/resources/localization.html
-
-0 errors, 10 warnings
+0 errors, 8 warnings

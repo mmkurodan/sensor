@@ -15,6 +15,8 @@ import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -43,6 +45,8 @@ public class MainActivity extends Activity implements SensorEventListener {
     private final Map<Integer, TextView> sensorValueViews = new HashMap<>();
     private Sensor rotationSensor;
     private Sensor gyroSensor;
+    private Sensor accelerometerSensor;
+    private Sensor magneticSensor;
     private LocationManager locationManager;
     private TextView azimuthView;
     private TextView gyroView;
@@ -51,6 +55,10 @@ public class MainActivity extends Activity implements SensorEventListener {
     private boolean gpsFixAcquired = false;
     private MapView mapView;
     private ItemizedIconOverlay<OverlayItem> gpsOverlay;
+    private SensorInfoOverlay sensorInfoOverlay;
+    private float[] accelerometerValues;
+    private float[] magneticValues;
+    private float[] gyroValues;
     private final LocationListener gpsLocationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
@@ -87,12 +95,18 @@ public class MainActivity extends Activity implements SensorEventListener {
         if (sensorManager != null) {
             rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
             gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+            accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            magneticSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         }
+        accelerometerValues = new float[3];
+        magneticValues = new float[3];
+        gyroValues = new float[3];
 
-        LinearLayout mainContainer = new LinearLayout(this);
-        mainContainer.setOrientation(LinearLayout.VERTICAL);
-        mainContainer.setBackgroundColor(Color.parseColor("#121212"));
+        // FrameLayout for fullscreen map with overlays
+        FrameLayout mapContainer = new FrameLayout(this);
+        mapContainer.setBackgroundColor(Color.parseColor("#121212"));
 
+        // Fullscreen MapView
         mapView = new MapView(this);
         mapView.setTileSource(TileSourceFactory.MAPNIK);
         mapView.setMultiTouchControls(true);
@@ -104,170 +118,43 @@ public class MainActivity extends Activity implements SensorEventListener {
         gpsOverlay = new ItemizedIconOverlay<>(items, null, getApplicationContext());
         mapView.getOverlays().add(gpsOverlay);
 
-        LinearLayout.LayoutParams mapParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 400);
+        FrameLayout.LayoutParams mapParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
         mapView.setLayoutParams(mapParams);
-        mainContainer.addView(mapView);
+        mapContainer.addView(mapView);
 
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.setBackgroundColor(Color.parseColor("#121212"));
+        // Toggle button for sensor info overlay
+        Button toggleButton = new Button(this);
+        toggleButton.setText("i");
+        toggleButton.setTextSize(20);
+        toggleButton.setTextColor(Color.WHITE);
+        toggleButton.setBackgroundColor(Color.parseColor("#4FC3F7"));
+        FrameLayout.LayoutParams toggleParams = new FrameLayout.LayoutParams(60, 60);
+        toggleParams.gravity = Gravity.TOP | Gravity.END;
+        toggleParams.setMargins(0, 16, 16, 0);
+        toggleButton.setLayoutParams(toggleParams);
+        toggleButton.setOnClickListener(v -> {
+            if (sensorInfoOverlay != null) {
+                sensorInfoOverlay.toggleVisibility();
+            }
+        });
+        mapContainer.addView(toggleButton);
 
-        LinearLayout mainLayout = new LinearLayout(this);
-        mainLayout.setOrientation(LinearLayout.VERTICAL);
-        mainLayout.setPadding(32, 32, 32, 32);
+        // Sensor info overlay (semi-transparent)
+        sensorInfoOverlay = new SensorInfoOverlay(this);
+        FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+        sensorInfoOverlay.setLayoutParams(overlayParams);
+        mapContainer.addView(sensorInfoOverlay);
 
-        // Title
-        TextView title = new TextView(this);
-        title.setText("センサーモニター");
-        title.setTextSize(28);
-        title.setTextColor(Color.WHITE);
-        title.setTypeface(null, Typeface.BOLD);
-        title.setGravity(Gravity.CENTER);
-        title.setPadding(0, 0, 0, 32);
-        mainLayout.addView(title);
-
-        // Sensor count
-        TextView countView = new TextView(this);
-        int detected = 0;
-        if (sensorManager != null) {
-            detected = sensorManager.getSensorList(Sensor.TYPE_ALL).size();
-        }
-        countView.setText("検出センサー数: " + detected);
-        countView.setTextSize(16);
-        countView.setTextColor(Color.parseColor("#AAAAAA"));
-        countView.setPadding(0, 0, 0, 32);
-        mainLayout.addView(countView);
-
-        // Compass header
-        LinearLayout header = new LinearLayout(this);
-        header.setOrientation(LinearLayout.HORIZONTAL);
-        header.setGravity(Gravity.CENTER_VERTICAL);
-        header.setPadding(0, 0, 0, 24);
-
-        compassView = new CompassView(this);
-        LinearLayout.LayoutParams compParams = new LinearLayout.LayoutParams(300, 300);
-        compParams.setMargins(0, 0, 24, 0);
-        compassView.setLayoutParams(compParams);
-        header.addView(compassView);
-
-        LinearLayout infoCol = new LinearLayout(this);
-        infoCol.setOrientation(LinearLayout.VERTICAL);
-
-        azimuthView = new TextView(this);
-        azimuthView.setText("方位: --°");
-        azimuthView.setTextSize(16);
-        azimuthView.setTextColor(Color.WHITE);
-        infoCol.addView(azimuthView);
-
-        gyroView = new TextView(this);
-        gyroView.setText("ジャイロ: x=-- y=-- z=--");
-        gyroView.setTextSize(14);
-        gyroView.setTextColor(Color.WHITE);
-        gyroView.setPadding(0, 8, 0, 0);
-        infoCol.addView(gyroView);
-
-        header.addView(infoCol);
-        mainLayout.addView(header);
-        mainLayout.addView(createGpsCard());
-
-        scrollView.addView(mainLayout);
-
-        mainContainer.addView(scrollView);
-        setContentView(mainContainer);
+        setContentView(mapContainer);
         updateGpsStatusText("GPS状態: 初期化完了\n権限確認待ち...");
     }
 
-    private LinearLayout createSensorCard(Sensor sensor) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundColor(Color.parseColor("#1E1E1E"));
-        card.setPadding(24, 24, 24, 24);
-
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.setMargins(0, 0, 0, 16);
-        card.setLayoutParams(cardParams);
-
-        // Sensor name
-        TextView nameView = new TextView(this);
-        nameView.setText(sensor.getName());
-        nameView.setTextSize(16);
-        nameView.setTextColor(Color.parseColor("#4FC3F7"));
-        nameView.setTypeface(null, Typeface.BOLD);
-        card.addView(nameView);
-
-        // Sensor type
-        TextView typeView = new TextView(this);
-        typeView.setText("タイプ: " + getSensorTypeName(sensor.getType()));
-        typeView.setTextSize(12);
-        typeView.setTextColor(Color.parseColor("#888888"));
-        typeView.setPadding(0, 4, 0, 8);
-        card.addView(typeView);
-
-        // Vendor info
-        TextView vendorView = new TextView(this);
-        vendorView.setText("ベンダー: " + sensor.getVendor() + " | 範囲: " + sensor.getMaximumRange());
-        vendorView.setTextSize(11);
-        vendorView.setTextColor(Color.parseColor("#666666"));
-        vendorView.setPadding(0, 0, 0, 8);
-        card.addView(vendorView);
-
-        // Sensor values
-        TextView valueView = new TextView(this);
-        valueView.setText("データ: 取得中...");
-        valueView.setTextSize(14);
-        valueView.setTextColor(Color.parseColor("#76FF03"));
-        valueView.setTypeface(Typeface.MONOSPACE);
-        card.addView(valueView);
-
-        sensorValueViews.put(sensor.getType(), valueView);
-
-        return card;
-    }
-
-    private LinearLayout createGpsCard() {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setBackgroundColor(Color.parseColor("#1E1E1E"));
-        card.setPadding(24, 24, 24, 24);
-
-        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        cardParams.setMargins(0, 0, 0, 16);
-        card.setLayoutParams(cardParams);
-
-        TextView titleView = new TextView(this);
-        titleView.setText("GPS");
-        titleView.setTextSize(16);
-        titleView.setTextColor(Color.parseColor("#4FC3F7"));
-        titleView.setTypeface(null, Typeface.BOLD);
-        card.addView(titleView);
-
-        TextView statusLabel = new TextView(this);
-        statusLabel.setText("位置情報 (緯度/経度/高度/精度)");
-        statusLabel.setTextSize(12);
-        statusLabel.setTextColor(Color.parseColor("#888888"));
-        statusLabel.setPadding(0, 4, 0, 8);
-        card.addView(statusLabel);
-
-        gpsView = new TextView(this);
-        gpsView.setText("GPS状態: 初期化中...");
-        gpsView.setTextSize(14);
-        gpsView.setTextColor(Color.parseColor("#76FF03"));
-        gpsView.setTypeface(Typeface.MONOSPACE);
-        card.addView(gpsView);
-
-        return card;
-    }
-
-
-
     private void updateGpsStatusText(String text) {
-        if (gpsView != null) {
-            gpsView.setText(text);
-        }
+        // GPS status is now displayed in the map tooltip or can be logged
     }
 
 
@@ -415,6 +302,12 @@ public class MainActivity extends Activity implements SensorEventListener {
             if (gyroSensor != null) {
                 sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_UI);
             }
+            if (accelerometerSensor != null) {
+                sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI);
+            }
+            if (magneticSensor != null) {
+                sensorManager.registerListener(this, magneticSensor, SensorManager.SENSOR_DELAY_UI);
+            }
         }
         startGpsAcquisitionFlow();
     }
@@ -435,23 +328,74 @@ public class MainActivity extends Activity implements SensorEventListener {
     public void onSensorChanged(SensorEvent event) {
         int type = event.sensor.getType();
         if (type == Sensor.TYPE_ROTATION_VECTOR) {
-            if (compassView != null && azimuthView != null && event.values != null) {
+            if (event.values != null) {
                 float[] rotationMatrix = new float[9];
                 float[] orientation = new float[3];
                 SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
                 SensorManager.getOrientation(rotationMatrix, orientation);
                 float azimuth = (float) Math.toDegrees(orientation[0]);
                 if (azimuth < 0) azimuth += 360;
-                compassView.setAzimuth(azimuth);
-                azimuthView.setText(String.format(Locale.getDefault(), "方位: %.0f°", azimuth));
+                if (compassView != null) {
+                    compassView.setAzimuth(azimuth);
+                }
+                if (sensorInfoOverlay != null) {
+                    sensorInfoOverlay.setCompassAzimuth(azimuth);
+                }
+                updateSensorInfoDisplay();
             }
         } else if (type == Sensor.TYPE_GYROSCOPE) {
-            if (gyroView != null && event.values != null && event.values.length >= 3) {
-                gyroView.setText(String.format(Locale.getDefault(),
-                        "ジャイロ: x=%.3f y=%.3f z=%.3f (rad/s)",
-                        event.values[0], event.values[1], event.values[2]));
+            if (event.values != null && event.values.length >= 3) {
+                gyroValues[0] = event.values[0];
+                gyroValues[1] = event.values[1];
+                gyroValues[2] = event.values[2];
+                updateSensorInfoDisplay();
+            }
+        } else if (type == Sensor.TYPE_ACCELEROMETER) {
+            if (event.values != null && event.values.length >= 3) {
+                accelerometerValues[0] = event.values[0];
+                accelerometerValues[1] = event.values[1];
+                accelerometerValues[2] = event.values[2];
+                updateSensorInfoDisplay();
+            }
+        } else if (type == Sensor.TYPE_MAGNETIC_FIELD) {
+            if (event.values != null && event.values.length >= 3) {
+                magneticValues[0] = event.values[0];
+                magneticValues[1] = event.values[1];
+                magneticValues[2] = event.values[2];
+                updateSensorInfoDisplay();
             }
         }
+    }
+
+    private void updateSensorInfoDisplay() {
+        if (sensorInfoOverlay == null) {
+            return;
+        }
+
+        List<String> sensorLines = new ArrayList<>();
+
+        // Accelerometer
+        if (accelerometerSensor != null) {
+            sensorLines.add(String.format(Locale.getDefault(),
+                    "加速度: x=%.2f y=%.2f z=%.2f m/s²",
+                    accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]));
+        }
+
+        // Magnetic field
+        if (magneticSensor != null) {
+            sensorLines.add(String.format(Locale.getDefault(),
+                    "磁場: x=%.1f y=%.1f z=%.1f µT",
+                    magneticValues[0], magneticValues[1], magneticValues[2]));
+        }
+
+        // Gyroscope
+        if (gyroSensor != null) {
+            sensorLines.add(String.format(Locale.getDefault(),
+                    "ジャイロ: x=%.3f y=%.3f z=%.3f rad/s",
+                    gyroValues[0], gyroValues[1], gyroValues[2]));
+        }
+
+        sensorInfoOverlay.setSensorInfo(sensorLines);
     }
 
     @Override

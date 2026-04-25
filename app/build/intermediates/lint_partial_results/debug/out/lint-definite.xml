@@ -16,73 +16,45 @@
     </incident>
 
     <incident
-        id="SetTextI18n"
+        id="ClickableViewAccessibility"
         severity="warning"
-        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
+        message="Custom view `SensorInfoOverlay` overrides `onTouchEvent` but not `performClick`">
         <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
-            line="135"
-            column="27"
-            startOffset="4954"
-            endLine="135"
-            endColumn="49"
-            endOffset="4976"/>
-    </incident>
-
-    <incident
-        id="SetTextI18n"
-        severity="warning"
-        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
-        <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
-            line="202"
-            column="26"
-            startOffset="7446"
-            endLine="202"
-            endColumn="71"
-            endOffset="7491"/>
-    </incident>
-
-    <incident
-        id="SetTextI18n"
-        severity="warning"
-        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
-        <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
-            line="210"
-            column="28"
-            startOffset="7762"
-            endLine="210"
-            endColumn="96"
-            endOffset="7830"/>
-    </incident>
-
-    <incident
-        id="SetTextI18n"
-        severity="warning"
-        message="String literal in `setText` can not be translated. Use Android resources instead.">
-        <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
-            line="242"
-            column="27"
-            startOffset="8998"
-            endLine="242"
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+            line="114"
+            column="20"
+            startOffset="3512"
+            endLine="114"
             endColumn="32"
-            endOffset="9003"/>
+            endOffset="3524"/>
     </incident>
 
     <incident
-        id="SetTextI18n"
+        id="DefaultLocale"
         severity="warning"
-        message="String literal in `setText` can not be translated. Use Android resources instead.">
+        message="Implicitly using the default locale is a common source of bugs: Use `String.format(Locale, ...)` instead">
         <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/MainActivity.java"
-            line="256"
-            column="25"
-            startOffset="9532"
-            endLine="256"
-            endColumn="41"
-            endOffset="9548"/>
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+            line="48"
+            column="31"
+            startOffset="1531"
+            endLine="48"
+            endColumn="62"
+            endOffset="1562"/>
+    </incident>
+
+    <incident
+        id="DrawAllocation"
+        severity="warning"
+        message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
+        <location
+            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
+            line="92"
+            column="24"
+            startOffset="2730"
+            endLine="93"
+            endColumn="91"
+            endOffset="2881"/>
     </incident>
 
     <incident
