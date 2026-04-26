@@ -16,7 +16,7 @@ import java.util.Locale;
 
 public class SensorInfoOverlay extends View {
     private static final float VISUAL_SIZE_RATIO = 0.30f;
-    private static final String DEFAULT_LOCATION_TEXT = "位置情報: 取得待機中";
+    private static final String DEFAULT_LOCATION_TEXT = "緯度: --, 経度: --";
 
     private final Paint backgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint titlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -181,12 +181,22 @@ public class SensorInfoOverlay extends View {
         float buttonRight = width - outerPadding;
         float buttonLeft = buttonRight - buttonWidth;
 
-        returnButtonRect.set(buttonLeft, outerPadding, buttonRight, outerPadding + buttonHeight);
+        // Place buttons at the bottom with safe area consideration
+        float bottomMargin = dp(16); // Safe area margin
+        float toggleButtonBottom = height - bottomMargin;
+        float returnButtonBottom = toggleButtonBottom - buttonHeight - buttonVerticalSpacing;
+
         toggleButtonRect.set(
                 buttonLeft,
-                returnButtonRect.bottom + buttonVerticalSpacing,
+                toggleButtonBottom - buttonHeight,
                 buttonRight,
-                returnButtonRect.bottom + buttonVerticalSpacing + buttonHeight
+                toggleButtonBottom
+        );
+        returnButtonRect.set(
+                buttonLeft,
+                returnButtonBottom - buttonHeight,
+                buttonRight,
+                returnButtonBottom
         );
 
         float locationMaxTextSize = Math.min(sp(40), width * 0.12f);
@@ -204,8 +214,6 @@ public class SensorInfoOverlay extends View {
                     ? sectionSpacing + (sensorInfoLines.size() - 1) * detailHeight
                     : 0f;
             float panelHeight = panelPadding
-                    + titleHeight
-                    + sectionSpacing
                     + locationHeight
                     + sectionSpacing
                     + visualSize
@@ -219,10 +227,7 @@ public class SensorInfoOverlay extends View {
             canvas.drawRoundRect(panelRect, dp(20), dp(20), backgroundPaint);
 
             float contentTop = panelRect.top + panelPadding;
-            float titleBaseline = contentTop - titlePaint.ascent();
-            canvas.drawText("センサー情報", panelPadding, titleBaseline, titlePaint);
-
-            float locationTop = contentTop + titleHeight + sectionSpacing;
+            float locationTop = contentTop;
             float locationBaseline = locationTop - locationPaint.ascent();
             canvas.drawText(locationLine, panelPadding, locationBaseline, locationPaint);
 
@@ -277,18 +282,9 @@ public class SensorInfoOverlay extends View {
         drawCenteredText(canvas, "E", centerX + radius + labelOffset, centerY, directionPaint);
         drawCenteredText(canvas, "W", centerX - radius - labelOffset, centerY, directionPaint);
 
-        // Draw white south marker triangle
-        Path southMarkerPath = new Path();
-        float markerSize = radius * 0.12f;
-        southMarkerPath.moveTo(centerX, centerY + radius - markerSize);
-        southMarkerPath.lineTo(centerX - markerSize * 0.6f, centerY + radius + markerSize * 0.4f);
-        southMarkerPath.lineTo(centerX + markerSize * 0.6f, centerY + radius + markerSize * 0.4f);
-        southMarkerPath.close();
-        canvas.drawPath(southMarkerPath, southMarkerPaint);
-
         canvas.save();
         if (!Float.isNaN(compassAzimuth)) {
-            canvas.rotate(-compassAzimuth, centerX, centerY);
+            canvas.rotate(compassAzimuth, centerX, centerY);
         }
 
         Path needlePath = new Path();

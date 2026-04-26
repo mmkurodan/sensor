@@ -28,6 +28,12 @@ import org.osmdroid.views.overlay.ItemizedIconOverlay;
 import org.osmdroid.views.overlay.OverlayItem;
 import org.osmdroid.util.GeoPoint;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -88,6 +94,18 @@ public class MainActivity extends Activity implements SensorEventListener {
         super.onCreate(savedInstanceState);
 
         Configuration.getInstance().setUserAgentValue(getApplicationContext().getPackageName());
+        
+        // Configure offline map caching
+        File osmandDir = new File(getFilesDir(), "osmdroid");
+        if (!osmandDir.exists()) {
+            osmandDir.mkdirs();
+        }
+        Configuration.getInstance().setOsmdroidBasePath(osmandDir);
+        File tileCache = new File(osmandDir, "tiles");
+        if (!tileCache.exists()) {
+            tileCache.mkdirs();
+        }
+        Configuration.getInstance().setOsmdroidTileCache(tileCache);
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
@@ -252,6 +270,57 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
     }
 
+    public void searchAddressAndMoveTo(String address) {
+        new Thread(() -> {
+            try {
+                String encodedAddress = URLEncoder.encode(address, "UTF-8");
+                String urlString = "https://nominatim.openstreetmap.org/search?q=" + encodedAddress + "&format=json&limit=1";
+                URL url = new URL(urlString);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("User-Agent", getApplicationContext().getPackageName());
+                
+                int responseCode = connection.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+                    
+                    String jsonResponse = response.toString();
+                    if (jsonResponse.contains("\"lat\"")) {
+                        int latStart = jsonResponse.indexOf("\"lat\":\"") + 7;
+                        int latEnd = jsonResponse.indexOf("\"", latStart);
+                        String latStr = jsonResponse.substring(latStart, latEnd);
+                        
+                        int lonStart = jsonResponse.indexOf("\"lon\":\"") + 7;
+                        int lonEnd = jsonResponse.indexOf("\"", lonStart);
+                        String lonStr = jsonResponse.substring(lonStart, lonEnd);
+                        
+                        double lat = Double.parseDouble(latStr);
+                        double lon = Double.parseDouble(lonStr);
+                        
+                        GeoPoint searchResult = new GeoPoint(lat, lon);
+                        runOnUiThread(() -> {
+                            if (mapView != null && gpsOverlay != null) {
+                                gpsOverlay.removeAllItems();
+                                OverlayItem item = new OverlayItem(address, "検索結果", searchResult);
+                                item.setMarker(ContextCompat.getDrawable(MainActivity.this, android.R.drawable.ic_menu_mylocation));
+                                gpsOverlay.addItem(item);
+                                mapView.getController().setCenter(searchResult);
+                            }
+                        });
+                    }
+                }
+                connection.disconnect();
+            } catch (Exception e) {
+            }
+        }).start();
+    }
+
     private String getSensorTypeName(int type) {
         switch (type) {
             case Sensor.TYPE_ACCELEROMETER: return "加速度計";
@@ -369,14 +438,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         List<String> sensorLines = new ArrayList<>();
 
-        // GPS Info (if available)
+        // GPS Info (if available) - updated format: show latitude and longitude labels with values
         if (lastGpsLocation != null) {
             sensorLines.add(String.format(Locale.getDefault(),
-                    "位置情報: %.6f, %.6f",
+                    "緯度: %.6f  経度: %.6f",
                     lastGpsLocation.getLatitude(),
                     lastGpsLocation.getLongitude()));
         } else {
-            sensorLines.add("位置情報: 取得待機中");
+            sensorLines.add("緯度: --  経度: --");
         }
 
         // Accelerometer
