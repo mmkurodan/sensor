@@ -87,10 +87,19 @@
     <string name="about">About</string>
     <string name="about_message">This software uses map data provided by OpenStreetMap.org</string>
     <string name="androidx_startup" translatable="false">androidx.startup</string>
-    <string name="app_name" translatable="false">Open Map</string>
     <string name="base">OSM base layer</string>
     <string name="base_nl">Netherlands base overlay</string>
     <string name="bing">Bing</string>
+    <string name="cacheManagerCancelBody">Do you want to cancel the map download?</string>
+    <string name="cacheManagerCancelTitle">Cancel map download</string>
+    <string name="cacheManagerCleanFailed">Cleaning failed. %s tiles deleted.</string>
+    <string name="cacheManagerCleaningTitle">"Cleaning tiles</string>
+    <string name="cacheManagerDownloadingTitle">Downloading tiles</string>
+    <string name="cacheManagerFailed">"Loading completed with %s errors.</string>
+    <string name="cacheManagerHandlingMessage">Handling zoom level: %1$s (from %2$s to %3$s)</string>
+    <string name="cacheManagerNo">No</string>
+    <string name="cacheManagerUnsupportedSource">This online tile source doesn\'t support bulk download</string>
+    <string name="cacheManagerYes">Yes</string>
     <string name="call_notification_answer_action">Answer</string>
     <string name="call_notification_answer_video_action">Video</string>
     <string name="call_notification_decline_action">Decline</string>

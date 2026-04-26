@@ -25,7 +25,11 @@ import android.widget.TextView;
 import androidx.core.content.ContextCompat;
 
 import org.osmdroid.config.Configuration;
+import org.osmdroid.mapsforge.MapsForgeTileProvider;
+import org.osmdroid.mapsforge.MapsForgeTileSource;
+import org.osmdroid.tileprovider.MapTileProviderBasic;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.tileprovider.util.SimpleRegisterReceiver;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.ItemizedIconOverlay;
@@ -48,20 +52,28 @@ public class MainActivity extends Activity implements SensorEventListener {
     private Sensor accelerometerSensor;
     private Sensor magneticSensor;
     private LocationManager locationManager;
+    private OfflineDataRepository offlineDataRepository;
     private MapView mapView;
+    private MapsForgeTileSource mapsForgeTileSource;
     private ItemizedIconOverlay<OverlayItem> gpsOverlay;
     private ItemizedIconOverlay<OverlayItem> searchOverlay;
     private SensorInfoOverlay sensorInfoOverlay;
     private OfflineAddressGeocoder offlineAddressGeocoder;
     private EditText addressInput;
+    private Button mapDownloadButton;
+    private Button addressDownloadButton;
     private TextView statusView;
     private float[] accelerometerValues;
     private float[] magneticValues;
     private float[] gyroValues;
     private GeoPoint lastGpsLocation;
     private GeoPoint lastSearchLocation;
+    private String mapStatusMessage = "";
+    private String addressStatusMessage = "";
     private String searchStatusMessage = "";
     private String gpsStatusMessage = "";
+    private volatile boolean mapDownloadInProgress;
+    private volatile boolean addressDownloadInProgress;
 
     private final LocationListener gpsLocationListener = new LocationListener() {
         @Override
@@ -93,7 +105,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        offlineAddressGeocoder = new OfflineAddressGeocoder(this);
+        offlineDataRepository = new OfflineDataRepository(this);
+        offlineAddressGeocoder = new OfflineAddressGeocoder(this, offlineDataRepository);
 
         if (sensorManager != null) {
             rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
@@ -127,7 +140,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         root.addView(sensorInfoOverlay);
 
         setContentView(root);
-        updateSearchStatus("オフライン地図を表示中。住所を入力して検索できます。");
+        refreshMapProvider();
+        refreshOfflineDataStatus();
+        updateSearchStatus("検索状態: 住所を入力してオフライン検索できます。");
         updateGpsStatusText("GPS状態: 権限確認待ち...");
     }
 
@@ -213,6 +228,25 @@ public class MainActivity extends Activity implements SensorEventListener {
         searchButton.setText("検索");
         searchButton.setOnClickListener(view -> performOfflineSearch());
 
+        LinearLayout downloadRow = new LinearLayout(this);
+        downloadRow.setOrientation(LinearLayout.HORIZONTAL);
+        downloadRow.setPadding(0, dp(8), 0, 0);
+
+        mapDownloadButton = new Button(this);
+        addressDownloadButton = new Button(this);
+
+        LinearLayout.LayoutParams firstButtonParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        firstButtonParams.rightMargin = dp(8);
+        mapDownloadButton.setLayoutParams(firstButtonParams);
+        mapDownloadButton.setOnClickListener(view -> startMapDownload());
+
+        LinearLayout.LayoutParams secondButtonParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        addressDownloadButton.setLayoutParams(secondButtonParams);
+        addressDownloadButton.setOnClickListener(view -> startAddressDownload());
+
+        downloadRow.addView(mapDownloadButton);
+        downloadRow.addView(addressDownloadButton);
+
         statusView = new TextView(this);
         statusView.setTextColor(Color.WHITE);
         statusView.setTextSize(12f);
@@ -221,6 +255,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         inputRow.addView(addressInput);
         inputRow.addView(searchButton);
         container.addView(inputRow);
+        container.addView(downloadRow);
         container.addView(statusView);
         return container;
     }
@@ -250,10 +285,18 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     private void applySearchResult(String query, OfflineAddressGeocoder.SearchResult result) {
-        if (result == null || mapView == null || searchOverlay == null) {
-            searchOverlay.removeAllItems();
-            mapView.invalidate();
+        if (result == null) {
+            if (searchOverlay != null) {
+                searchOverlay.removeAllItems();
+            }
+            if (mapView != null) {
+                mapView.invalidate();
+            }
             updateSearchStatus("検索状態: 該当する住所が見つかりませんでした。");
+            return;
+        }
+        if (mapView == null || searchOverlay == null) {
+            updateSearchStatus("検索状態: 地図の初期化が完了していません。");
             return;
         }
 
@@ -295,6 +338,16 @@ public class MainActivity extends Activity implements SensorEventListener {
         refreshStatusView();
     }
 
+    private void updateMapStatusText(String text) {
+        mapStatusMessage = text;
+        refreshStatusView();
+    }
+
+    private void updateAddressStatusText(String text) {
+        addressStatusMessage = text;
+        refreshStatusView();
+    }
+
     private void updateGpsStatusText(String text) {
         gpsStatusMessage = text;
         refreshStatusView();
@@ -306,16 +359,21 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
 
         StringBuilder statusBuilder = new StringBuilder();
-        if (!searchStatusMessage.isEmpty()) {
-            statusBuilder.append(searchStatusMessage);
-        }
-        if (!gpsStatusMessage.isEmpty()) {
-            if (statusBuilder.length() > 0) {
-                statusBuilder.append('\n');
-            }
-            statusBuilder.append(gpsStatusMessage);
-        }
+        appendStatus(statusBuilder, mapStatusMessage);
+        appendStatus(statusBuilder, addressStatusMessage);
+        appendStatus(statusBuilder, searchStatusMessage);
+        appendStatus(statusBuilder, gpsStatusMessage);
         statusView.setText(statusBuilder.toString());
+    }
+
+    private void appendStatus(StringBuilder statusBuilder, String text) {
+        if (text == null || text.isEmpty()) {
+            return;
+        }
+        if (statusBuilder.length() > 0) {
+            statusBuilder.append('\n');
+        }
+        statusBuilder.append(text);
     }
 
     private void updateGpsDisplay(Location location, boolean fromCache) {
@@ -441,6 +499,15 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        disposeMapsForgeTileSource();
+        if (mapView != null) {
+            mapView.onDetach();
+        }
+    }
+
+    @Override
     public void onSensorChanged(SensorEvent event) {
         int type = event.sensor.getType();
         if (type == Sensor.TYPE_ROTATION_VECTOR) {
@@ -544,5 +611,213 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private int dp(int value) {
         return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private void refreshMapProvider() {
+        if (mapView == null) {
+            return;
+        }
+
+        disposeMapsForgeTileSource();
+
+        File mapFile = offlineDataRepository.getMapFile();
+        if (!mapFile.isFile() || mapFile.length() <= 0L) {
+            applyFallbackTileProvider();
+            updateMapStatusText("地図状態: 日本地図未取得。地図DL/更新で最新データを取得してください。");
+            return;
+        }
+
+        try {
+            MapsForgeTileSource.createInstance(getApplication());
+            MapsForgeTileSource newTileSource = MapsForgeTileSource.createFromFiles(
+                    new File[]{mapFile},
+                    null,
+                    "japan-offline",
+                    "ja");
+            mapView.setTileProvider(new MapsForgeTileProvider(new SimpleRegisterReceiver(this), newTileSource, null));
+            mapView.setUseDataConnection(false);
+            mapView.setScrollableAreaLimitDouble(newTileSource.getBoundsOsmdroid());
+            mapsForgeTileSource = newTileSource;
+
+            if (lastGpsLocation == null && lastSearchLocation == null) {
+                mapView.getController().setZoom(6);
+                mapView.getController().setCenter(DEFAULT_START_POINT);
+            }
+            mapView.invalidate();
+            updateMapStatusText("地図状態: 日本地図をオフライン表示中 (" + formatFileSize(mapFile.length()) + ")");
+        } catch (RuntimeException e) {
+            applyFallbackTileProvider();
+            updateMapStatusText("地図状態: 日本地図の読み込みに失敗しました。地図DL/更新で再取得してください。");
+        }
+    }
+
+    private void applyFallbackTileProvider() {
+        MapTileProviderBasic basicTileProvider = new MapTileProviderBasic(getApplicationContext(), TileSourceFactory.MAPNIK);
+        mapView.setTileProvider(basicTileProvider);
+        mapView.setTileSource(TileSourceFactory.MAPNIK);
+        mapView.setUseDataConnection(false);
+        mapView.setScrollableAreaLimitDouble(null);
+        mapView.invalidate();
+    }
+
+    private void disposeMapsForgeTileSource() {
+        if (mapsForgeTileSource != null) {
+            mapsForgeTileSource.dispose();
+            mapsForgeTileSource = null;
+        }
+    }
+
+    private void refreshOfflineDataStatus() {
+        if (!mapDownloadInProgress) {
+            File mapFile = offlineDataRepository.getMapFile();
+            if (mapFile.isFile() && mapFile.length() > 0L) {
+                updateMapStatusText("地図状態: 日本地図をオフライン表示中 (" + formatFileSize(mapFile.length()) + ")");
+            } else {
+                updateMapStatusText("地図状態: 日本地図未取得。地図DL/更新で最新データを取得してください。");
+            }
+        }
+
+        if (!addressDownloadInProgress) {
+            File addressDatabaseFile = offlineDataRepository.getAddressDatabaseFile();
+            if (addressDatabaseFile.isFile() && addressDatabaseFile.length() > 0L) {
+                updateAddressStatusText("住所状態: ダウンロード済み住所DBを検索に使用します (" + formatFileSize(addressDatabaseFile.length()) + ")");
+            } else {
+                updateAddressStatusText("住所状態: 同梱辞書で検索中。住所DL/更新で日本住所DBを取得できます。");
+            }
+        }
+
+        updateDownloadButtons();
+    }
+
+    private void updateDownloadButtons() {
+        boolean busy = mapDownloadInProgress || addressDownloadInProgress;
+
+        if (mapDownloadButton != null) {
+            mapDownloadButton.setEnabled(!busy);
+            mapDownloadButton.setText(mapDownloadInProgress
+                    ? "地図DL中..."
+                    : (offlineDataRepository.hasMapFile() ? "地図再取得" : "地図DL"));
+        }
+
+        if (addressDownloadButton != null) {
+            addressDownloadButton.setEnabled(!busy);
+            addressDownloadButton.setText(addressDownloadInProgress
+                    ? "住所DL中..."
+                    : (offlineDataRepository.hasAddressDatabase() ? "住所再取得" : "住所DL"));
+        }
+    }
+
+    private void startMapDownload() {
+        if (mapDownloadInProgress || addressDownloadInProgress) {
+            return;
+        }
+
+        mapDownloadInProgress = true;
+        updateDownloadButtons();
+        updateMapStatusText("地図状態: 日本地図のダウンロードを開始しています...");
+
+        new Thread(() -> {
+            try {
+                File downloadedMapFile = offlineDataRepository.downloadMap(new OfflineDataRepository.ProgressListener() {
+                    @Override
+                    public void onStart(long totalBytes) {
+                        runOnUiThread(() -> updateMapStatusText(buildDownloadStatus("地図状態: 日本地図DL中", 0L, totalBytes)));
+                    }
+
+                    @Override
+                    public void onProgress(long downloadedBytes, long totalBytes) {
+                        runOnUiThread(() -> updateMapStatusText(buildDownloadStatus("地図状態: 日本地図DL中", downloadedBytes, totalBytes)));
+                    }
+                });
+
+                runOnUiThread(() -> {
+                    refreshMapProvider();
+                    updateMapStatusText("地図状態: 日本地図を更新しました (" + formatFileSize(downloadedMapFile.length()) + ")");
+                });
+            } catch (IOException e) {
+                runOnUiThread(() -> updateMapStatusText("地図状態: ダウンロード失敗: " + readableErrorMessage(e)));
+            } finally {
+                mapDownloadInProgress = false;
+                runOnUiThread(this::refreshOfflineDataStatus);
+            }
+        }).start();
+    }
+
+    private void startAddressDownload() {
+        if (mapDownloadInProgress || addressDownloadInProgress) {
+            return;
+        }
+
+        addressDownloadInProgress = true;
+        updateDownloadButtons();
+        updateAddressStatusText("住所状態: 日本住所DBのダウンロードを開始しています...");
+
+        new Thread(() -> {
+            try {
+                File downloadedAddressFile = offlineDataRepository.downloadAddressDatabase(new OfflineDataRepository.ProgressListener() {
+                    @Override
+                    public void onStart(long totalBytes) {
+                        runOnUiThread(() -> updateAddressStatusText(buildDownloadStatus("住所状態: 日本住所DB DL中", 0L, totalBytes)));
+                    }
+
+                    @Override
+                    public void onProgress(long downloadedBytes, long totalBytes) {
+                        runOnUiThread(() -> updateAddressStatusText(buildDownloadStatus("住所状態: 日本住所DB DL中", downloadedBytes, totalBytes)));
+                    }
+                });
+
+                runOnUiThread(() -> updateAddressStatusText("住所状態: DB取得完了。検索インデックスを作成中です..."));
+                offlineAddressGeocoder.prepareDownloadedDatabase();
+
+                runOnUiThread(() -> {
+                    updateAddressStatusText("住所状態: ダウンロード済み住所DBを検索に使用します (" + formatFileSize(downloadedAddressFile.length()) + ")");
+                    updateSearchStatus("検索状態: 最新の住所DBでオフライン検索できます。");
+                });
+            } catch (IOException e) {
+                runOnUiThread(() -> updateAddressStatusText("住所状態: ダウンロード失敗: " + readableErrorMessage(e)));
+            } finally {
+                addressDownloadInProgress = false;
+                runOnUiThread(this::refreshOfflineDataStatus);
+            }
+        }).start();
+    }
+
+    private String buildDownloadStatus(String prefix, long downloadedBytes, long totalBytes) {
+        if (totalBytes > 0L) {
+            return String.format(
+                    Locale.getDefault(),
+                    "%s %s / %s",
+                    prefix,
+                    formatFileSize(downloadedBytes),
+                    formatFileSize(totalBytes));
+        }
+        return String.format(
+                Locale.getDefault(),
+                "%s %s",
+                prefix,
+                formatFileSize(downloadedBytes));
+    }
+
+    private String formatFileSize(long bytes) {
+        if (bytes <= 0L) {
+            return "0 B";
+        }
+
+        String[] units = {"B", "KB", "MB", "GB", "TB"};
+        double value = bytes;
+        int unitIndex = 0;
+        while (value >= 1024d && unitIndex < units.length - 1) {
+            value /= 1024d;
+            unitIndex++;
+        }
+        return String.format(Locale.getDefault(), "%.1f %s", value, units[unitIndex]);
+    }
+
+    private String readableErrorMessage(Exception exception) {
+        String message = exception.getMessage();
+        if (message == null || message.trim().isEmpty()) {
+            return "不明なエラー";
+        }
+        return message;
     }
 }
