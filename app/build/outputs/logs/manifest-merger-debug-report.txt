@@ -1,9 +1,9 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /root/sensor/app/src/main/AndroidManifest.xml:1:1-25:12
-INJECTED from /root/sensor/app/src/main/AndroidManifest.xml:1:1-25:12
-INJECTED from /root/sensor/app/src/main/AndroidManifest.xml:1:1-25:12
-INJECTED from /root/sensor/app/src/main/AndroidManifest.xml:1:1-25:12
+ADDED from /root/sensor/app/src/main/AndroidManifest.xml:1:1-24:12
+INJECTED from /root/sensor/app/src/main/AndroidManifest.xml:1:1-24:12
+INJECTED from /root/sensor/app/src/main/AndroidManifest.xml:1:1-24:12
+INJECTED from /root/sensor/app/src/main/AndroidManifest.xml:1:1-24:12
 MERGED from [org.osmdroid:osmdroid-android:6.1.10] /root/.gradle/caches/8.12/transforms/adef06cae5ce69ff73917355e4a35376/transformed/jetified-osmdroid-android-6.1.10/AndroidManifest.xml:2:1-29:12
 MERGED from [androidx.core:core:1.13.1] /root/.gradle/caches/8.12/transforms/98f20b9a0e85fd1724e23c3abe49ee4f/transformed/core-1.13.1/AndroidManifest.xml:17:1-30:12
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /root/.gradle/caches/8.12/transforms/0aef094b907433950f7c15ee36bfdb4f/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:17:1-27:12
@@ -30,17 +30,13 @@ uses-permission#android.permission.ACCESS_FINE_LOCATION
 ADDED from /root/sensor/app/src/main/AndroidManifest.xml:4:5-79
 	android:name
 		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:4:22-76
-uses-permission#android.permission.INTERNET
-ADDED from /root/sensor/app/src/main/AndroidManifest.xml:5:5-67
-	android:name
-		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:5:22-64
 uses-permission#android.permission.WRITE_EXTERNAL_STORAGE
-ADDED from /root/sensor/app/src/main/AndroidManifest.xml:6:5-81
+ADDED from /root/sensor/app/src/main/AndroidManifest.xml:5:5-81
 	android:name
-		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:6:22-78
+		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:5:22-78
 application
-ADDED from /root/sensor/app/src/main/AndroidManifest.xml:8:5-23:19
-INJECTED from /root/sensor/app/src/main/AndroidManifest.xml:8:5-23:19
+ADDED from /root/sensor/app/src/main/AndroidManifest.xml:7:5-22:19
+INJECTED from /root/sensor/app/src/main/AndroidManifest.xml:7:5-22:19
 MERGED from [androidx.core:core:1.13.1] /root/.gradle/caches/8.12/transforms/98f20b9a0e85fd1724e23c3abe49ee4f/transformed/core-1.13.1/AndroidManifest.xml:28:5-89
 MERGED from [androidx.core:core:1.13.1] /root/.gradle/caches/8.12/transforms/98f20b9a0e85fd1724e23c3abe49ee4f/transformed/core-1.13.1/AndroidManifest.xml:28:5-89
 MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /root/.gradle/caches/8.12/transforms/0aef094b907433950f7c15ee36bfdb4f/transformed/versionedparcelable-1.1.1/AndroidManifest.xml:24:5-25:19
@@ -54,25 +50,25 @@ MERGED from [androidx.startup:startup-runtime:1.1.1] /root/.gradle/caches/8.12/t
 	android:appComponentFactory
 		ADDED from [androidx.core:core:1.13.1] /root/.gradle/caches/8.12/transforms/98f20b9a0e85fd1724e23c3abe49ee4f/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
 	android:label
-		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:9:9-31
+		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:8:9-31
 	android:theme
-		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:10:9-60
+		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:9:9-72
 activity#com.example.sensor.MainActivity
-ADDED from /root/sensor/app/src/main/AndroidManifest.xml:12:9-21:20
+ADDED from /root/sensor/app/src/main/AndroidManifest.xml:11:9-20:20
 	android:exported
-		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:14:13-36
+		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:13:13-36
 	android:name
-		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:13:13-41
+		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:12:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /root/sensor/app/src/main/AndroidManifest.xml:16:13-19:29
+ADDED from /root/sensor/app/src/main/AndroidManifest.xml:15:13-18:29
 action#android.intent.action.MAIN
-ADDED from /root/sensor/app/src/main/AndroidManifest.xml:17:17-69
+ADDED from /root/sensor/app/src/main/AndroidManifest.xml:16:17-69
 	android:name
-		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:17:25-66
+		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:16:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /root/sensor/app/src/main/AndroidManifest.xml:18:17-77
+ADDED from /root/sensor/app/src/main/AndroidManifest.xml:17:17-77
 	android:name
-		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:18:27-74
+		ADDED from /root/sensor/app/src/main/AndroidManifest.xml:17:27-74
 uses-sdk
 INJECTED from /root/sensor/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /root/sensor/app/src/main/AndroidManifest.xml

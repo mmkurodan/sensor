@@ -4,7 +4,6 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.graphics.Typeface;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -12,9 +11,13 @@ import android.hardware.SensorManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -23,59 +26,52 @@ import androidx.core.content.ContextCompat;
 
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.ItemizedIconOverlay;
 import org.osmdroid.views.overlay.OverlayItem;
-import org.osmdroid.util.GeoPoint;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class MainActivity extends Activity implements SensorEventListener {
 
     private static final int REQUEST_LOCATION_PERMISSION = 1001;
+    private static final GeoPoint DEFAULT_START_POINT = new GeoPoint(35.6762, 139.6503);
 
     private SensorManager sensorManager;
-    private final Map<Integer, TextView> sensorValueViews = new HashMap<>();
     private Sensor rotationSensor;
     private Sensor gyroSensor;
     private Sensor accelerometerSensor;
     private Sensor magneticSensor;
     private LocationManager locationManager;
-    private TextView azimuthView;
-    private TextView gyroView;
-    private TextView gpsView;
-    private CompassView compassView;
-    private boolean gpsFixAcquired = false;
     private MapView mapView;
     private ItemizedIconOverlay<OverlayItem> gpsOverlay;
+    private ItemizedIconOverlay<OverlayItem> searchOverlay;
     private SensorInfoOverlay sensorInfoOverlay;
+    private OfflineAddressGeocoder offlineAddressGeocoder;
+    private EditText addressInput;
+    private TextView statusView;
     private float[] accelerometerValues;
     private float[] magneticValues;
     private float[] gyroValues;
     private GeoPoint lastGpsLocation;
+    private GeoPoint lastSearchLocation;
+    private String searchStatusMessage = "";
+    private String gpsStatusMessage = "";
+
     private final LocationListener gpsLocationListener = new LocationListener() {
         @Override
         public void onLocationChanged(Location location) {
-            if (!gpsFixAcquired && LocationManager.GPS_PROVIDER.equals(location.getProvider())) {
-                gpsFixAcquired = true;
-            }
             updateGpsDisplay(location, false);
         }
 
         @Override
         public void onProviderEnabled(String provider) {
-            updateGpsStatusText("GPS状態: プロバイダ有効化 (" + provider + ")\n取得待機中...");
+            updateGpsStatusText("GPS状態: プロバイダ有効化 (" + provider + ")");
         }
 
         @Override
@@ -85,7 +81,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         @Override
         public void onStatusChanged(String provider, int status, Bundle extras) {
-            // logging removed
+            // Not used.
         }
     };
 
@@ -93,62 +89,34 @@ public class MainActivity extends Activity implements SensorEventListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Configuration.getInstance().setUserAgentValue(getApplicationContext().getPackageName());
-        
-        // Configure offline map caching
-        File osmandDir = new File(getFilesDir(), "osmdroid");
-        if (!osmandDir.exists()) {
-            osmandDir.mkdirs();
-        }
-        Configuration.getInstance().setOsmdroidBasePath(osmandDir);
-        File tileCache = new File(osmandDir, "tiles");
-        if (!tileCache.exists()) {
-            tileCache.mkdirs();
-        }
-        Configuration.getInstance().setOsmdroidTileCache(tileCache);
+        configureOsmdroid();
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+        offlineAddressGeocoder = new OfflineAddressGeocoder(this);
+
         if (sensorManager != null) {
             rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
             gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
             accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
             magneticSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         }
+
         accelerometerValues = new float[3];
         magneticValues = new float[3];
         gyroValues = new float[3];
 
-        // FrameLayout for fullscreen map with overlays
-        FrameLayout mapContainer = new FrameLayout(this);
-        mapContainer.setBackgroundColor(Color.parseColor("#121212"));
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.parseColor("#121212"));
 
-        // Fullscreen MapView
-        mapView = new MapView(this);
-        mapView.setTileSource(TileSourceFactory.MAPNIK);
-        mapView.setMultiTouchControls(true);
-        GeoPoint startPoint = new GeoPoint(35.6762, 139.6503);
-        mapView.getController().setZoom(14);
-        mapView.getController().setCenter(startPoint);
+        mapView = createMapView();
+        root.addView(mapView);
+        root.addView(createSearchPanel());
 
-        List<OverlayItem> items = new ArrayList<>();
-        gpsOverlay = new ItemizedIconOverlay<>(items, null, getApplicationContext());
-        mapView.getOverlays().add(gpsOverlay);
-
-        FrameLayout.LayoutParams mapParams = new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT);
-        mapView.setLayoutParams(mapParams);
-        mapContainer.addView(mapView);
-
-        // Sensor info overlay (bottom sheet style - full width)
         sensorInfoOverlay = new SensorInfoOverlay(this);
-        sensorInfoOverlay.setOnReturnToLocationClicked(new Runnable() {
-            @Override
-            public void run() {
-                if (lastGpsLocation != null && mapView != null) {
-                    mapView.getController().setCenter(lastGpsLocation);
-                }
+        sensorInfoOverlay.setOnReturnToLocationClicked(() -> {
+            if (lastGpsLocation != null && mapView != null) {
+                mapView.getController().setCenter(lastGpsLocation);
             }
         });
         FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
@@ -156,60 +124,226 @@ public class MainActivity extends Activity implements SensorEventListener {
                 FrameLayout.LayoutParams.MATCH_PARENT);
         overlayParams.gravity = Gravity.BOTTOM;
         sensorInfoOverlay.setLayoutParams(overlayParams);
-        mapContainer.addView(sensorInfoOverlay);
+        root.addView(sensorInfoOverlay);
 
-        setContentView(mapContainer);
-        updateGpsStatusText("GPS状態: 初期化完了\n権限確認待ち...");
+        setContentView(root);
+        updateSearchStatus("オフライン地図を表示中。住所を入力して検索できます。");
+        updateGpsStatusText("GPS状態: 権限確認待ち...");
+    }
+
+    private void configureOsmdroid() {
+        Configuration.getInstance().setUserAgentValue(getApplicationContext().getPackageName());
+
+        File osmdroidDir = new File(getFilesDir(), "osmdroid");
+        if (!osmdroidDir.exists()) {
+            osmdroidDir.mkdirs();
+        }
+        Configuration.getInstance().setOsmdroidBasePath(osmdroidDir);
+
+        File tileCache = new File(osmdroidDir, "tiles");
+        if (!tileCache.exists()) {
+            tileCache.mkdirs();
+        }
+        Configuration.getInstance().setOsmdroidTileCache(tileCache);
+    }
+
+    private MapView createMapView() {
+        MapView createdMapView = new MapView(this);
+        createdMapView.setTileSource(TileSourceFactory.MAPNIK);
+        createdMapView.setUseDataConnection(false);
+        createdMapView.setMultiTouchControls(true);
+        createdMapView.setBackgroundColor(Color.parseColor("#101820"));
+        createdMapView.getController().setZoom(6);
+        createdMapView.getController().setCenter(DEFAULT_START_POINT);
+
+        createdMapView.getOverlays().add(new CoordinateGridOverlay(this));
+
+        gpsOverlay = new ItemizedIconOverlay<>(new ArrayList<>(), null, getApplicationContext());
+        searchOverlay = new ItemizedIconOverlay<>(new ArrayList<>(), null, getApplicationContext());
+        createdMapView.getOverlays().add(gpsOverlay);
+        createdMapView.getOverlays().add(searchOverlay);
+
+        FrameLayout.LayoutParams mapParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+        createdMapView.setLayoutParams(mapParams);
+        return createdMapView;
+    }
+
+    private LinearLayout createSearchPanel() {
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setBackgroundColor(Color.parseColor("#CC121212"));
+        container.setPadding(dp(12), dp(12), dp(12), dp(12));
+
+        FrameLayout.LayoutParams containerParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT);
+        containerParams.gravity = Gravity.TOP;
+        containerParams.topMargin = dp(12);
+        containerParams.leftMargin = dp(12);
+        containerParams.rightMargin = dp(12);
+        container.setLayoutParams(containerParams);
+
+        LinearLayout inputRow = new LinearLayout(this);
+        inputRow.setOrientation(LinearLayout.HORIZONTAL);
+
+        addressInput = new EditText(this);
+        addressInput.setHint("住所をオフライン検索");
+        addressInput.setSingleLine(true);
+        addressInput.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        addressInput.setBackgroundColor(Color.WHITE);
+        addressInput.setTextColor(Color.BLACK);
+        addressInput.setHintTextColor(Color.DKGRAY);
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        inputParams.rightMargin = dp(8);
+        addressInput.setLayoutParams(inputParams);
+        addressInput.setOnEditorActionListener((view, actionId, event) -> {
+            boolean enterPressed = event != null
+                    && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_DOWN;
+            if (actionId == EditorInfo.IME_ACTION_SEARCH || enterPressed) {
+                performOfflineSearch();
+                return true;
+            }
+            return false;
+        });
+
+        Button searchButton = new Button(this);
+        searchButton.setText("検索");
+        searchButton.setOnClickListener(view -> performOfflineSearch());
+
+        statusView = new TextView(this);
+        statusView.setTextColor(Color.WHITE);
+        statusView.setTextSize(12f);
+        statusView.setPadding(0, dp(8), 0, 0);
+
+        inputRow.addView(addressInput);
+        inputRow.addView(searchButton);
+        container.addView(inputRow);
+        container.addView(statusView);
+        return container;
+    }
+
+    private void performOfflineSearch() {
+        if (addressInput == null) {
+            return;
+        }
+
+        String query = addressInput.getText().toString().trim();
+        if (query.isEmpty()) {
+            updateSearchStatus("検索状態: 住所を入力してください。");
+            return;
+        }
+
+        hideKeyboard();
+        updateSearchStatus("検索状態: オフライン検索中...");
+
+        new Thread(() -> {
+            try {
+                OfflineAddressGeocoder.SearchResult result = offlineAddressGeocoder.search(query);
+                runOnUiThread(() -> applySearchResult(query, result));
+            } catch (IOException e) {
+                runOnUiThread(() -> updateSearchStatus("検索状態: 住所辞書の読み込みに失敗しました。"));
+            }
+        }).start();
+    }
+
+    private void applySearchResult(String query, OfflineAddressGeocoder.SearchResult result) {
+        if (result == null || mapView == null || searchOverlay == null) {
+            searchOverlay.removeAllItems();
+            mapView.invalidate();
+            updateSearchStatus("検索状態: 該当する住所が見つかりませんでした。");
+            return;
+        }
+
+        lastSearchLocation = new GeoPoint(result.getLatitude(), result.getLongitude());
+
+        searchOverlay.removeAllItems();
+        OverlayItem item = new OverlayItem(
+                result.getDisplayName(),
+                String.format(Locale.getDefault(), "緯度: %.6f  経度: %.6f", result.getLatitude(), result.getLongitude()),
+                lastSearchLocation);
+        item.setMarker(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_search));
+        searchOverlay.addItem(item);
+
+        mapView.getController().setZoom(16);
+        mapView.getController().setCenter(lastSearchLocation);
+        mapView.invalidate();
+
+        updateSearchStatus(String.format(
+                Locale.getDefault(),
+                "検索結果: %s\n入力: %s\n緯度: %.6f  経度: %.6f",
+                result.getDisplayName(),
+                query,
+                result.getLatitude(),
+                result.getLongitude()));
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (inputMethodManager != null && addressInput != null) {
+            inputMethodManager.hideSoftInputFromWindow(addressInput.getWindowToken(), 0);
+        }
+        if (addressInput != null) {
+            addressInput.clearFocus();
+        }
+    }
+
+    private void updateSearchStatus(String text) {
+        searchStatusMessage = text;
+        refreshStatusView();
     }
 
     private void updateGpsStatusText(String text) {
-        // GPS status is now displayed in the map tooltip or can be logged
+        gpsStatusMessage = text;
+        refreshStatusView();
     }
 
+    private void refreshStatusView() {
+        if (statusView == null) {
+            return;
+        }
 
+        StringBuilder statusBuilder = new StringBuilder();
+        if (!searchStatusMessage.isEmpty()) {
+            statusBuilder.append(searchStatusMessage);
+        }
+        if (!gpsStatusMessage.isEmpty()) {
+            if (statusBuilder.length() > 0) {
+                statusBuilder.append('\n');
+            }
+            statusBuilder.append(gpsStatusMessage);
+        }
+        statusView.setText(statusBuilder.toString());
+    }
 
     private void updateGpsDisplay(Location location, boolean fromCache) {
         if (location == null) {
             return;
         }
+
         lastGpsLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
-        
         if (sensorInfoOverlay != null && location.hasAltitude()) {
             sensorInfoOverlay.setAltitude(location.getAltitude());
         }
-        
-        String altitudeText = location.hasAltitude()
-                ? String.format(Locale.getDefault(), "%.2f m", location.getAltitude())
-                : "--";
-        String accuracyText = location.hasAccuracy()
-                ? String.format(Locale.getDefault(), "%.2f m", location.getAccuracy())
-                : "--";
-        String speedText = location.hasSpeed()
-                ? String.format(Locale.getDefault(), "%.2f m/s", location.getSpeed())
-                : "--";
-        String bearingText = location.hasBearing()
-                ? String.format(Locale.getDefault(), "%.2f°", location.getBearing())
-                : "--";
-        String source = fromCache ? "キャッシュ" : "リアルタイム";
-        String text = String.format(Locale.getDefault(),
-                "GPS: %s\n緯度: %.6f  経度: %.6f\n高度: %s  精度: %s  速度: %s  方位: %s",
-                source,
-                location.getLatitude(),
-                location.getLongitude(),
-                altitudeText,
-                accuracyText,
-                speedText,
-                bearingText);
-        
-        if (mapView != null && gpsOverlay != null) {
-            GeoPoint point = new GeoPoint(location.getLatitude(), location.getLongitude());
+
+        if (gpsOverlay != null) {
             gpsOverlay.removeAllItems();
-            OverlayItem item = new OverlayItem("現在位置", "GPS取得", point);
+            OverlayItem item = new OverlayItem("現在位置", fromCache ? "GPSキャッシュ" : "GPS取得", lastGpsLocation);
             item.setMarker(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_mylocation));
             gpsOverlay.addItem(item);
         }
-        
+
+        if (mapView != null && lastSearchLocation == null) {
+            mapView.getController().setCenter(lastGpsLocation);
+        }
+
+        updateGpsStatusText(fromCache ? "GPS状態: キャッシュ位置を表示中" : "GPS状態: 現在地を取得しました");
         updateSensorInfoDisplay();
+        if (mapView != null) {
+            mapView.invalidate();
+        }
     }
 
     private void startGpsAcquisitionFlow() {
@@ -217,15 +351,15 @@ public class MainActivity extends Activity implements SensorEventListener {
             updateGpsStatusText("GPS状態: LocationManager取得失敗");
             return;
         }
-        int finePermission = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION);
-        int coarsePermission = checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION);
-        if (finePermission != PackageManager.PERMISSION_GRANTED) {
+
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             updateGpsStatusText("GPS状態: 位置情報権限要求中...");
             requestPermissions(
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
                     REQUEST_LOCATION_PERMISSION);
             return;
         }
+
         subscribeGpsUpdates();
     }
 
@@ -233,13 +367,13 @@ public class MainActivity extends Activity implements SensorEventListener {
         if (locationManager == null) {
             return;
         }
+
         try {
-            boolean gpsEnabled = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-            boolean networkEnabled = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-            if (!gpsEnabled) {
-                updateGpsStatusText("GPS状態: GPSプロバイダが無効です\n位置情報設定を有効化してください");
+            if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                updateGpsStatusText("GPS状態: GPSプロバイダが無効です");
                 return;
             }
+
             locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
                     1000L,
@@ -267,89 +401,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         try {
             locationManager.removeUpdates(gpsLocationListener);
         } catch (SecurityException e) {
-        }
-    }
-
-    public void searchAddressAndMoveTo(String address) {
-        new Thread(() -> {
-            try {
-                String encodedAddress = URLEncoder.encode(address, "UTF-8");
-                String urlString = "https://nominatim.openstreetmap.org/search?q=" + encodedAddress + "&format=json&limit=1";
-                URL url = new URL(urlString);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setRequestProperty("User-Agent", getApplicationContext().getPackageName());
-                
-                int responseCode = connection.getResponseCode();
-                if (responseCode == HttpURLConnection.HTTP_OK) {
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-                    StringBuilder response = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        response.append(line);
-                    }
-                    reader.close();
-                    
-                    String jsonResponse = response.toString();
-                    if (jsonResponse.contains("\"lat\"")) {
-                        int latStart = jsonResponse.indexOf("\"lat\":\"") + 7;
-                        int latEnd = jsonResponse.indexOf("\"", latStart);
-                        String latStr = jsonResponse.substring(latStart, latEnd);
-                        
-                        int lonStart = jsonResponse.indexOf("\"lon\":\"") + 7;
-                        int lonEnd = jsonResponse.indexOf("\"", lonStart);
-                        String lonStr = jsonResponse.substring(lonStart, lonEnd);
-                        
-                        double lat = Double.parseDouble(latStr);
-                        double lon = Double.parseDouble(lonStr);
-                        
-                        GeoPoint searchResult = new GeoPoint(lat, lon);
-                        runOnUiThread(() -> {
-                            if (mapView != null && gpsOverlay != null) {
-                                gpsOverlay.removeAllItems();
-                                OverlayItem item = new OverlayItem(address, "検索結果", searchResult);
-                                item.setMarker(ContextCompat.getDrawable(MainActivity.this, android.R.drawable.ic_menu_mylocation));
-                                gpsOverlay.addItem(item);
-                                mapView.getController().setCenter(searchResult);
-                            }
-                        });
-                    }
-                }
-                connection.disconnect();
-            } catch (Exception e) {
-            }
-        }).start();
-    }
-
-    private String getSensorTypeName(int type) {
-        switch (type) {
-            case Sensor.TYPE_ACCELEROMETER: return "加速度計";
-            case Sensor.TYPE_MAGNETIC_FIELD: return "磁気センサー";
-            case Sensor.TYPE_GYROSCOPE: return "ジャイロスコープ";
-            case Sensor.TYPE_LIGHT: return "照度センサー";
-            case Sensor.TYPE_PRESSURE: return "気圧センサー";
-            case Sensor.TYPE_PROXIMITY: return "近接センサー";
-            case Sensor.TYPE_GRAVITY: return "重力センサー";
-            case Sensor.TYPE_LINEAR_ACCELERATION: return "線形加速度";
-            case Sensor.TYPE_ROTATION_VECTOR: return "回転ベクトル";
-            case Sensor.TYPE_RELATIVE_HUMIDITY: return "湿度センサー";
-            case Sensor.TYPE_AMBIENT_TEMPERATURE: return "温度センサー";
-            case Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED: return "磁気(未較正)";
-            case Sensor.TYPE_GAME_ROTATION_VECTOR: return "ゲーム回転ベクトル";
-            case Sensor.TYPE_GYROSCOPE_UNCALIBRATED: return "ジャイロ(未較正)";
-            case Sensor.TYPE_SIGNIFICANT_MOTION: return "有意な動き";
-            case Sensor.TYPE_STEP_DETECTOR: return "歩行検出";
-            case Sensor.TYPE_STEP_COUNTER: return "歩数計";
-            case Sensor.TYPE_GEOMAGNETIC_ROTATION_VECTOR: return "地磁気回転ベクトル";
-            case Sensor.TYPE_HEART_RATE: return "心拍数";
-            case Sensor.TYPE_POSE_6DOF: return "6DoF姿勢";
-            case Sensor.TYPE_STATIONARY_DETECT: return "静止検出";
-            case Sensor.TYPE_MOTION_DETECT: return "動作検出";
-            case Sensor.TYPE_HEART_BEAT: return "心拍";
-            case Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT: return "装着検出";
-            case Sensor.TYPE_ACCELEROMETER_UNCALIBRATED: return "加速度(未較正)";
-            case Sensor.TYPE_HINGE_ANGLE: return "ヒンジ角度";
-            default: return "タイプ " + type;
+            updateGpsStatusText("GPS状態: 更新停止に失敗しました");
         }
     }
 
@@ -398,9 +450,8 @@ public class MainActivity extends Activity implements SensorEventListener {
                 SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
                 SensorManager.getOrientation(rotationMatrix, orientation);
                 float azimuth = (float) Math.toDegrees(orientation[0]);
-                if (azimuth < 0) azimuth += 360;
-                if (compassView != null) {
-                    compassView.setAzimuth(azimuth);
+                if (azimuth < 0) {
+                    azimuth += 360f;
                 }
                 if (sensorInfoOverlay != null) {
                     sensorInfoOverlay.setCompassAzimuth(azimuth);
@@ -437,10 +488,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
 
         List<String> sensorLines = new ArrayList<>();
-
-        // GPS Info (if available) - updated format: show latitude and longitude labels with values
         if (lastGpsLocation != null) {
-            sensorLines.add(String.format(Locale.getDefault(),
+            sensorLines.add(String.format(
+                    Locale.getDefault(),
                     "緯度: %.6f  経度: %.6f",
                     lastGpsLocation.getLatitude(),
                     lastGpsLocation.getLongitude()));
@@ -448,21 +498,24 @@ public class MainActivity extends Activity implements SensorEventListener {
             sensorLines.add("緯度: --  経度: --");
         }
 
-        // Accelerometer
         if (accelerometerSensor != null) {
-            sensorLines.add(String.format(Locale.getDefault(),
+            sensorLines.add(String.format(
+                    Locale.getDefault(),
                     "加速度: X=%.2f Y=%.2f Z=%.2f m/s²",
-                    accelerometerValues[0], accelerometerValues[1], accelerometerValues[2]));
+                    accelerometerValues[0],
+                    accelerometerValues[1],
+                    accelerometerValues[2]));
         }
 
-        // Magnetic field
         if (magneticSensor != null) {
-            sensorLines.add(String.format(Locale.getDefault(),
+            sensorLines.add(String.format(
+                    Locale.getDefault(),
                     "磁場: X=%.1f Y=%.1f Z=%.1f µT",
-                    magneticValues[0], magneticValues[1], magneticValues[2]));
+                    magneticValues[0],
+                    magneticValues[1],
+                    magneticValues[2]));
         }
 
-        // Gyroscope
         if (gyroSensor != null) {
             sensorInfoOverlay.setGyroValues(gyroValues[0], gyroValues[1], gyroValues[2]);
         }
@@ -472,7 +525,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-        // Not used
+        // Not used.
     }
 
     @Override
@@ -487,5 +540,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         } else {
             updateGpsStatusText("GPS状態: 権限が拒否されました");
         }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 }
