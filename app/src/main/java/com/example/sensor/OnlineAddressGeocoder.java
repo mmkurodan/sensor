@@ -14,6 +14,8 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 public class OnlineAddressGeocoder {
 
@@ -23,10 +25,10 @@ public class OnlineAddressGeocoder {
         appContext = context.getApplicationContext();
     }
 
-    public SearchResult search(String query) throws IOException {
+    public List<SearchResult> search(String query, int limit) throws IOException {
         String trimmedQuery = query == null ? "" : query.trim();
         if (trimmedQuery.isEmpty()) {
-            return null;
+            return new ArrayList<>();
         }
 
         Uri requestUri = new Uri.Builder()
@@ -34,7 +36,7 @@ public class OnlineAddressGeocoder {
                 .authority("nominatim.openstreetmap.org")
                 .appendPath("search")
                 .appendQueryParameter("format", "jsonv2")
-                .appendQueryParameter("limit", "1")
+                .appendQueryParameter("limit", String.valueOf(Math.max(1, limit)))
                 .appendQueryParameter("countrycodes", "jp")
                 .appendQueryParameter("accept-language", "ja")
                 .appendQueryParameter("q", trimmedQuery)
@@ -57,7 +59,7 @@ public class OnlineAddressGeocoder {
             }
 
             try (InputStream inputStream = connection.getInputStream()) {
-                return parseSearchResult(readBody(inputStream), trimmedQuery);
+                return parseSearchResults(readBody(inputStream), trimmedQuery);
             }
         } finally {
             if (connection != null) {
@@ -66,18 +68,18 @@ public class OnlineAddressGeocoder {
         }
     }
 
-    private SearchResult parseSearchResult(String responseBody, String fallbackDisplayName) throws IOException {
+    private List<SearchResult> parseSearchResults(String responseBody, String fallbackDisplayName) throws IOException {
         try {
             JSONArray results = new JSONArray(responseBody);
-            if (results.length() == 0) {
-                return null;
+            List<SearchResult> parsedResults = new ArrayList<>();
+            for (int i = 0; i < results.length(); i++) {
+                JSONObject candidate = results.getJSONObject(i);
+                String displayName = candidate.optString("display_name", fallbackDisplayName);
+                double latitude = Double.parseDouble(candidate.getString("lat"));
+                double longitude = Double.parseDouble(candidate.getString("lon"));
+                parsedResults.add(new SearchResult(displayName, latitude, longitude));
             }
-
-            JSONObject bestMatch = results.getJSONObject(0);
-            String displayName = bestMatch.optString("display_name", fallbackDisplayName);
-            double latitude = Double.parseDouble(bestMatch.getString("lat"));
-            double longitude = Double.parseDouble(bestMatch.getString("lon"));
-            return new SearchResult(displayName, latitude, longitude);
+            return parsedResults;
         } catch (JSONException | NumberFormatException e) {
             throw new IOException("住所検索結果の解析に失敗しました", e);
         }

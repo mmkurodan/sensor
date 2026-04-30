@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.Point;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -12,24 +13,32 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.Surface;
+import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
 
+import org.osmdroid.api.IGeoPoint;
 import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
+import org.osmdroid.util.BoundingBox;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
-import org.osmdroid.views.overlay.ItemizedIconOverlay;
-import org.osmdroid.views.overlay.OverlayItem;
+import org.osmdroid.views.Projection;
+import org.osmdroid.views.overlay.Marker;
+import org.osmdroid.views.overlay.Polyline;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -39,6 +48,9 @@ import java.util.Locale;
 public class MainActivity extends Activity implements SensorEventListener {
 
     private static final int REQUEST_LOCATION_PERMISSION = 1001;
+    private static final int SEARCH_RESULT_LIMIT = 5;
+    private static final float MAX_COMPASS_TILT_DEGREES = 70f;
+    private static final float AZIMUTH_SMOOTHING_FACTOR = 0.18f;
     private static final GeoPoint DEFAULT_START_POINT = new GeoPoint(35.6762, 139.6503);
 
     private SensorManager sensorManager;
@@ -48,16 +60,31 @@ public class MainActivity extends Activity implements SensorEventListener {
     private Sensor magneticSensor;
     private LocationManager locationManager;
     private MapView mapView;
-    private ItemizedIconOverlay<OverlayItem> gpsOverlay;
-    private ItemizedIconOverlay<OverlayItem> searchOverlay;
+    private Marker gpsMarker;
+    private Marker searchMarker;
+    private Polyline routePolyline;
     private SensorInfoOverlay sensorInfoOverlay;
     private OnlineAddressGeocoder onlineAddressGeocoder;
+    private OnlineRouteService onlineRouteService;
     private EditText addressInput;
-    private float[] accelerometerValues;
-    private float[] magneticValues;
-    private float[] gyroValues;
+    private LinearLayout searchResultsContainer;
+    private ScrollView searchResultsScrollView;
+    private Button trackingButton;
+    private Button centeringButton;
+    private final float[] accelerometerValues = new float[3];
+    private final float[] magneticValues = new float[3];
+    private final float[] gyroValues = new float[3];
+    private final float[] rawRotationMatrix = new float[9];
+    private final float[] adjustedRotationMatrix = new float[9];
+    private final float[] orientationAngles = new float[3];
+    private boolean hasAccelerometerReading;
+    private boolean hasMagneticReading;
+    private boolean trackingEnabled = true;
+    private boolean centeringEnabled = true;
+    private float smoothedAzimuth = Float.NaN;
     private GeoPoint lastGpsLocation;
     private GeoPoint lastSearchLocation;
+    private String routeSummaryLine;
 
     private final LocationListener gpsLocationListener = new LocationListener() {
         @Override
@@ -90,6 +117,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         onlineAddressGeocoder = new OnlineAddressGeocoder(this);
+        onlineRouteService = new OnlineRouteService(this);
 
         if (sensorManager != null) {
             rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
@@ -97,10 +125,6 @@ public class MainActivity extends Activity implements SensorEventListener {
             accelerometerSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
             magneticSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         }
-
-        accelerometerValues = new float[3];
-        magneticValues = new float[3];
-        gyroValues = new float[3];
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.parseColor("#121212"));
@@ -110,19 +134,22 @@ public class MainActivity extends Activity implements SensorEventListener {
         root.addView(createSearchPanel());
 
         sensorInfoOverlay = new SensorInfoOverlay(this);
-        sensorInfoOverlay.setOnReturnToLocationClicked(() -> {
-            if (lastGpsLocation != null && mapView != null) {
-                mapView.getController().setCenter(lastGpsLocation);
+        sensorInfoOverlay.setOnReturnToLocationClicked(this::recenterOnCurrentLocation);
+        sensorInfoOverlay.setOnPanelVisibilityChanged(() -> {
+            if (centeringEnabled && lastGpsLocation != null) {
+                centerMapOnCurrentLocation();
             }
         });
         FrameLayout.LayoutParams overlayParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT);
-        overlayParams.gravity = Gravity.BOTTOM;
+                FrameLayout.LayoutParams.MATCH_PARENT
+        );
         sensorInfoOverlay.setLayoutParams(overlayParams);
         root.addView(sensorInfoOverlay);
 
         setContentView(root);
+        updateTrackingButton();
+        updateCenteringButton();
     }
 
     private void configureOsmdroid() {
@@ -147,19 +174,36 @@ public class MainActivity extends Activity implements SensorEventListener {
         createdMapView.setUseDataConnection(true);
         createdMapView.setMultiTouchControls(true);
         createdMapView.setBackgroundColor(Color.parseColor("#101820"));
-        createdMapView.getController().setZoom(6);
+        createdMapView.getController().setZoom(6.0);
         createdMapView.getController().setCenter(DEFAULT_START_POINT);
 
-        createdMapView.getOverlays().add(new CoordinateGridOverlay(this));
+        routePolyline = new Polyline();
+        routePolyline.setColor(Color.parseColor("#4FC3F7"));
+        routePolyline.setWidth(dp(4));
 
-        gpsOverlay = new ItemizedIconOverlay<>(new ArrayList<>(), null, getApplicationContext());
-        searchOverlay = new ItemizedIconOverlay<>(new ArrayList<>(), null, getApplicationContext());
-        createdMapView.getOverlays().add(gpsOverlay);
-        createdMapView.getOverlays().add(searchOverlay);
+        gpsMarker = new Marker(createdMapView);
+        gpsMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        gpsMarker.setIcon(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_mylocation));
+        gpsMarker.setTitle("現在位置");
+        gpsMarker.setInfoWindow(null);
+        gpsMarker.setVisible(false);
+
+        searchMarker = new Marker(createdMapView);
+        searchMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        searchMarker.setIcon(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_search));
+        searchMarker.setTitle("検索地点");
+        searchMarker.setInfoWindow(null);
+        searchMarker.setVisible(false);
+
+        createdMapView.getOverlays().add(new CoordinateGridOverlay(this));
+        createdMapView.getOverlays().add(routePolyline);
+        createdMapView.getOverlays().add(searchMarker);
+        createdMapView.getOverlays().add(gpsMarker);
 
         FrameLayout.LayoutParams mapParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT);
+                FrameLayout.LayoutParams.MATCH_PARENT
+        );
         createdMapView.setLayoutParams(mapParams);
         return createdMapView;
     }
@@ -172,7 +216,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         FrameLayout.LayoutParams containerParams = new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.WRAP_CONTENT);
+                FrameLayout.LayoutParams.WRAP_CONTENT
+        );
         containerParams.gravity = Gravity.TOP;
         containerParams.topMargin = dp(12);
         containerParams.leftMargin = dp(12);
@@ -204,13 +249,63 @@ public class MainActivity extends Activity implements SensorEventListener {
         });
 
         Button searchButton = new Button(this);
+        searchButton.setAllCaps(false);
         searchButton.setText("検索");
         searchButton.setOnClickListener(view -> performAddressSearch());
 
         inputRow.addView(addressInput);
         inputRow.addView(searchButton);
         container.addView(inputRow);
+
+        LinearLayout controlRow = new LinearLayout(this);
+        controlRow.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams controlRowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        controlRowParams.topMargin = dp(8);
+        controlRow.setLayoutParams(controlRowParams);
+        controlRow.setGravity(Gravity.END);
+
+        trackingButton = createCompactToggleButton("追跡", view -> toggleTracking());
+        centeringButton = createCompactToggleButton("中心", view -> toggleCentering());
+        controlRow.addView(trackingButton);
+        controlRow.addView(centeringButton);
+        container.addView(controlRow);
+
+        searchResultsContainer = new LinearLayout(this);
+        searchResultsContainer.setOrientation(LinearLayout.VERTICAL);
+
+        searchResultsScrollView = new ScrollView(this);
+        searchResultsScrollView.setVisibility(View.GONE);
+        LinearLayout.LayoutParams resultParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(220)
+        );
+        resultParams.topMargin = dp(8);
+        searchResultsScrollView.setLayoutParams(resultParams);
+        searchResultsScrollView.addView(searchResultsContainer);
+        container.addView(searchResultsScrollView);
+
         return container;
+    }
+
+    private Button createCompactToggleButton(String label, View.OnClickListener listener) {
+        Button button = new Button(this);
+        button.setAllCaps(false);
+        button.setMinWidth(0);
+        button.setMinimumWidth(0);
+        button.setPadding(dp(10), dp(6), dp(10), dp(6));
+        button.setTextSize(12f);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.leftMargin = dp(8);
+        button.setLayoutParams(params);
+        button.setOnClickListener(listener);
+        button.setTag(label);
+        return button;
     }
 
     private void performAddressSearch() {
@@ -229,43 +324,186 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         new Thread(() -> {
             try {
-                OnlineAddressGeocoder.SearchResult result = onlineAddressGeocoder.search(query);
-                runOnUiThread(() -> applySearchResult(result));
+                List<OnlineAddressGeocoder.SearchResult> results = onlineAddressGeocoder.search(query, SEARCH_RESULT_LIMIT);
+                runOnUiThread(() -> showSearchCandidates(results));
             } catch (IOException e) {
-                runOnUiThread(() -> showToast("住所検索に失敗しました"));
+                runOnUiThread(() -> {
+                    hideSearchCandidates();
+                    showToast("住所検索に失敗しました");
+                });
             }
         }).start();
     }
 
-    private void applySearchResult(OnlineAddressGeocoder.SearchResult result) {
-        if (result == null) {
-            if (searchOverlay != null) {
-                searchOverlay.removeAllItems();
-            }
-            if (mapView != null) {
-                mapView.invalidate();
-            }
+    private void showSearchCandidates(List<OnlineAddressGeocoder.SearchResult> results) {
+        if (searchResultsContainer == null || searchResultsScrollView == null) {
+            return;
+        }
+
+        searchResultsContainer.removeAllViews();
+        clearRoute();
+
+        if (results == null || results.isEmpty()) {
+            searchResultsScrollView.setVisibility(View.GONE);
             showToast("該当する住所が見つかりませんでした");
             return;
         }
-        if (mapView == null || searchOverlay == null) {
+
+        TextView headerView = new TextView(this);
+        headerView.setText("候補から選択");
+        headerView.setTextColor(Color.parseColor("#4FC3F7"));
+        headerView.setTextSize(12f);
+        headerView.setPadding(dp(4), dp(2), dp(4), dp(6));
+        searchResultsContainer.addView(headerView);
+
+        for (OnlineAddressGeocoder.SearchResult result : results) {
+            TextView candidateView = new TextView(this);
+            candidateView.setText(result.getDisplayName());
+            candidateView.setTextColor(Color.WHITE);
+            candidateView.setTextSize(14f);
+            candidateView.setBackgroundColor(Color.parseColor("#33212121"));
+            candidateView.setPadding(dp(12), dp(10), dp(12), dp(10));
+            candidateView.setMaxLines(3);
+            candidateView.setEllipsize(TextUtils.TruncateAt.END);
+
+            LinearLayout.LayoutParams candidateParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            candidateParams.bottomMargin = dp(6);
+            candidateView.setLayoutParams(candidateParams);
+            candidateView.setOnClickListener(view -> applySearchSelection(result));
+            searchResultsContainer.addView(candidateView);
+        }
+
+        searchResultsScrollView.setVisibility(View.VISIBLE);
+    }
+
+    private void hideSearchCandidates() {
+        if (searchResultsContainer != null) {
+            searchResultsContainer.removeAllViews();
+        }
+        if (searchResultsScrollView != null) {
+            searchResultsScrollView.setVisibility(View.GONE);
+        }
+    }
+
+    private void applySearchSelection(OnlineAddressGeocoder.SearchResult result) {
+        if (result == null) {
+            return;
+        }
+        if (mapView == null || searchMarker == null) {
             showToast("地図の初期化が完了していません");
             return;
         }
 
+        hideSearchCandidates();
+        addressInput.setText(result.getDisplayName());
         lastSearchLocation = new GeoPoint(result.getLatitude(), result.getLongitude());
 
-        searchOverlay.removeAllItems();
-        OverlayItem item = new OverlayItem(
-                result.getDisplayName(),
-                String.format(Locale.getDefault(), "緯度: %.6f  経度: %.6f", result.getLatitude(), result.getLongitude()),
-                lastSearchLocation);
-        item.setMarker(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_search));
-        searchOverlay.addItem(item);
+        searchMarker.setPosition(lastSearchLocation);
+        searchMarker.setTitle(result.getDisplayName());
+        searchMarker.setSubDescription(String.format(
+                Locale.getDefault(),
+                "緯度: %.6f  経度: %.6f",
+                result.getLatitude(),
+                result.getLongitude()
+        ));
+        searchMarker.setVisible(true);
 
-        mapView.getController().setZoom(16);
-        mapView.getController().setCenter(lastSearchLocation);
+        if (centeringEnabled) {
+            setCenteringEnabled(false);
+        }
+
+        if (lastGpsLocation != null) {
+            fetchRouteToSearchLocation(lastGpsLocation, lastSearchLocation);
+        } else {
+            clearRoute();
+            mapView.getController().setZoom(16.0);
+            mapView.getController().setCenter(lastSearchLocation);
+            mapView.invalidate();
+        }
+    }
+
+    private void fetchRouteToSearchLocation(GeoPoint start, GeoPoint destination) {
+        new Thread(() -> {
+            try {
+                OnlineRouteService.RouteResult routeResult = onlineRouteService.fetchRoute(start, destination);
+                runOnUiThread(() -> applyRouteResult(routeResult, destination));
+            } catch (IOException e) {
+                runOnUiThread(() -> {
+                    clearRoute();
+                    mapView.getController().setZoom(16.0);
+                    mapView.getController().setCenter(destination);
+                    mapView.invalidate();
+                    showToast("ルート取得に失敗しました");
+                });
+            }
+        }).start();
+    }
+
+    private void applyRouteResult(OnlineRouteService.RouteResult routeResult, GeoPoint fallbackDestination) {
+        if (mapView == null || routePolyline == null) {
+            return;
+        }
+
+        if (routeResult == null || routeResult.getPoints().isEmpty()) {
+            clearRoute();
+            mapView.getController().setZoom(16.0);
+            mapView.getController().setCenter(fallbackDestination);
+            mapView.invalidate();
+            showToast("ルートが見つかりませんでした");
+            return;
+        }
+
+        routePolyline.setPoints(routeResult.getPoints());
+        routeSummaryLine = formatRouteSummary(routeResult);
+        updateSensorInfoDisplay();
+
+        BoundingBox boundingBox = createBoundingBox(routeResult.getPoints());
+        if (boundingBox != null) {
+            mapView.zoomToBoundingBox(boundingBox, true);
+        }
         mapView.invalidate();
+    }
+
+    private void clearRoute() {
+        routeSummaryLine = null;
+        if (routePolyline != null) {
+            routePolyline.setPoints(new ArrayList<>());
+        }
+        updateSensorInfoDisplay();
+        if (mapView != null) {
+            mapView.invalidate();
+        }
+    }
+
+    private BoundingBox createBoundingBox(List<GeoPoint> points) {
+        if (points == null || points.isEmpty()) {
+            return null;
+        }
+
+        double north = -90d;
+        double south = 90d;
+        double east = -180d;
+        double west = 180d;
+
+        for (GeoPoint point : points) {
+            north = Math.max(north, point.getLatitude());
+            south = Math.min(south, point.getLatitude());
+            east = Math.max(east, point.getLongitude());
+            west = Math.min(west, point.getLongitude());
+        }
+        return new BoundingBox(north, east, south, west);
+    }
+
+    private String formatRouteSummary(OnlineRouteService.RouteResult routeResult) {
+        double distanceKm = routeResult.getDistanceMeters() / 1000d;
+        long durationMinutes = Math.round(routeResult.getDurationSeconds() / 60d);
+        if (Double.isNaN(distanceKm) || routeResult.getDistanceMeters() <= 0d) {
+            return "ルート: 取得済み";
+        }
+        return String.format(Locale.getDefault(), "ルート: %.1f km / 約%d分", distanceKm, durationMinutes);
     }
 
     private void hideKeyboard() {
@@ -288,15 +526,14 @@ public class MainActivity extends Activity implements SensorEventListener {
             sensorInfoOverlay.setAltitude(location.getAltitude());
         }
 
-        if (gpsOverlay != null) {
-            gpsOverlay.removeAllItems();
-            OverlayItem item = new OverlayItem("現在位置", fromCache ? "GPSキャッシュ" : "GPS取得", lastGpsLocation);
-            item.setMarker(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_mylocation));
-            gpsOverlay.addItem(item);
+        if (gpsMarker != null) {
+            gpsMarker.setPosition(lastGpsLocation);
+            gpsMarker.setSubDescription(fromCache ? "GPSキャッシュ" : "GPS取得");
+            gpsMarker.setVisible(true);
         }
 
-        if (mapView != null && lastSearchLocation == null) {
-            mapView.getController().setCenter(lastGpsLocation);
+        if (mapView != null && centeringEnabled) {
+            centerMapOnCurrentLocation();
         }
 
         updateSensorInfoDisplay();
@@ -305,15 +542,113 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
     }
 
+    private void recenterOnCurrentLocation() {
+        if (lastGpsLocation == null) {
+            showToast("現在地の取得を待っています");
+            return;
+        }
+        centerMapOnCurrentLocation();
+    }
+
+    private void centerMapOnCurrentLocation() {
+        centerMap(lastGpsLocation, sensorInfoOverlay != null && sensorInfoOverlay.isVisible());
+    }
+
+    private void centerMap(GeoPoint target, boolean keepInTopVisibleArea) {
+        if (mapView == null || target == null) {
+            return;
+        }
+
+        mapView.post(() -> {
+            if (mapView == null) {
+                return;
+            }
+
+            if (!keepInTopVisibleArea || sensorInfoOverlay == null || sensorInfoOverlay.getOccupiedBottomInset() <= 0f) {
+                mapView.getController().setCenter(target);
+                mapView.invalidate();
+                return;
+            }
+
+            Projection projection = mapView.getProjection();
+            if (projection == null) {
+                mapView.getController().setCenter(target);
+                mapView.invalidate();
+                return;
+            }
+
+            Point targetPoint = projection.toPixels(target, null);
+            int mapCenterX = mapView.getWidth() / 2;
+            int mapCenterY = mapView.getHeight() / 2;
+            int desiredY = Math.round((mapView.getHeight() - sensorInfoOverlay.getOccupiedBottomInset()) / 2f);
+            int dx = targetPoint.x - mapCenterX;
+            int dy = targetPoint.y - desiredY;
+
+            IGeoPoint adjustedCenter = projection.fromPixels(mapCenterX + dx, mapCenterY + dy);
+            if (adjustedCenter != null) {
+                mapView.getController().setCenter(new GeoPoint(adjustedCenter.getLatitude(), adjustedCenter.getLongitude()));
+            } else {
+                mapView.getController().setCenter(target);
+            }
+            mapView.invalidate();
+        });
+    }
+
+    private void toggleTracking() {
+        if (trackingEnabled) {
+            setTrackingEnabled(false);
+            stopGpsUpdates();
+            return;
+        }
+
+        setTrackingEnabled(true);
+        startGpsAcquisitionFlow();
+    }
+
+    private void toggleCentering() {
+        setCenteringEnabled(!centeringEnabled);
+        if (centeringEnabled && lastGpsLocation != null) {
+            centerMapOnCurrentLocation();
+        }
+    }
+
+    private void setTrackingEnabled(boolean enabled) {
+        trackingEnabled = enabled;
+        updateTrackingButton();
+    }
+
+    private void setCenteringEnabled(boolean enabled) {
+        centeringEnabled = enabled;
+        updateCenteringButton();
+    }
+
+    private void updateTrackingButton() {
+        updateToggleButtonAppearance(trackingButton, "追跡", trackingEnabled);
+    }
+
+    private void updateCenteringButton() {
+        updateToggleButtonAppearance(centeringButton, "中心", centeringEnabled);
+    }
+
+    private void updateToggleButtonAppearance(Button button, String label, boolean enabled) {
+        if (button == null) {
+            return;
+        }
+        button.setText(label + (enabled ? " ON" : " OFF"));
+        button.setTextColor(enabled ? Color.parseColor("#4FC3F7") : Color.parseColor("#B0BEC5"));
+        button.setBackgroundColor(enabled ? Color.parseColor("#22263540") : Color.parseColor("#221E1E1E"));
+    }
+
     private void startGpsAcquisitionFlow() {
-        if (locationManager == null) {
+        if (!trackingEnabled || locationManager == null) {
             return;
         }
 
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(
                     new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                    REQUEST_LOCATION_PERMISSION);
+                    REQUEST_LOCATION_PERMISSION
+            );
             return;
         }
 
@@ -321,7 +656,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     private void subscribeGpsUpdates() {
-        if (locationManager == null) {
+        if (!trackingEnabled || locationManager == null) {
             return;
         }
 
@@ -335,13 +670,15 @@ public class MainActivity extends Activity implements SensorEventListener {
                     LocationManager.GPS_PROVIDER,
                     1000L,
                     0f,
-                    gpsLocationListener);
+                    gpsLocationListener
+            );
 
             Location lastKnownGps = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if (lastKnownGps != null) {
                 updateGpsDisplay(lastKnownGps, true);
             }
         } catch (SecurityException e) {
+            setTrackingEnabled(false);
             showToast("位置情報にアクセスできません");
         }
     }
@@ -408,18 +745,8 @@ public class MainActivity extends Activity implements SensorEventListener {
         int type = event.sensor.getType();
         if (type == Sensor.TYPE_ROTATION_VECTOR) {
             if (event.values != null) {
-                float[] rotationMatrix = new float[9];
-                float[] orientation = new float[3];
-                SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values);
-                SensorManager.getOrientation(rotationMatrix, orientation);
-                float azimuth = (float) Math.toDegrees(orientation[0]);
-                if (azimuth < 0) {
-                    azimuth += 360f;
-                }
-                if (sensorInfoOverlay != null) {
-                    sensorInfoOverlay.setCompassAzimuth(azimuth);
-                }
-                updateSensorInfoDisplay();
+                SensorManager.getRotationMatrixFromVector(rawRotationMatrix, event.values);
+                updateCompassAzimuth(rawRotationMatrix);
             }
         } else if (type == Sensor.TYPE_GYROSCOPE) {
             if (event.values != null && event.values.length >= 3) {
@@ -433,16 +760,92 @@ public class MainActivity extends Activity implements SensorEventListener {
                 accelerometerValues[0] = event.values[0];
                 accelerometerValues[1] = event.values[1];
                 accelerometerValues[2] = event.values[2];
+                hasAccelerometerReading = true;
                 updateSensorInfoDisplay();
+                if (rotationSensor == null && hasMagneticReading) {
+                    updateCompassFromAccelerometerAndMagneticField();
+                }
             }
         } else if (type == Sensor.TYPE_MAGNETIC_FIELD) {
             if (event.values != null && event.values.length >= 3) {
                 magneticValues[0] = event.values[0];
                 magneticValues[1] = event.values[1];
                 magneticValues[2] = event.values[2];
+                hasMagneticReading = true;
                 updateSensorInfoDisplay();
+                if (rotationSensor == null && hasAccelerometerReading) {
+                    updateCompassFromAccelerometerAndMagneticField();
+                }
             }
         }
+    }
+
+    private void updateCompassFromAccelerometerAndMagneticField() {
+        if (SensorManager.getRotationMatrix(rawRotationMatrix, null, accelerometerValues, magneticValues)) {
+            updateCompassAzimuth(rawRotationMatrix);
+        }
+    }
+
+    private void updateCompassAzimuth(float[] sourceRotationMatrix) {
+        remapRotationMatrixForDisplay(sourceRotationMatrix, adjustedRotationMatrix);
+        SensorManager.getOrientation(adjustedRotationMatrix, orientationAngles);
+
+        float pitch = (float) Math.toDegrees(orientationAngles[1]);
+        float roll = (float) Math.toDegrees(orientationAngles[2]);
+        if (Math.abs(pitch) > MAX_COMPASS_TILT_DEGREES || Math.abs(roll) > MAX_COMPASS_TILT_DEGREES) {
+            return;
+        }
+
+        float azimuth = (float) Math.toDegrees(orientationAngles[0]);
+        if (azimuth < 0f) {
+            azimuth += 360f;
+        }
+
+        smoothedAzimuth = smoothAzimuth(smoothedAzimuth, azimuth);
+        if (sensorInfoOverlay != null) {
+            sensorInfoOverlay.setCompassAzimuth(smoothedAzimuth);
+        }
+        updateSensorInfoDisplay();
+    }
+
+    private void remapRotationMatrixForDisplay(float[] sourceRotationMatrix, float[] outRotationMatrix) {
+        int axisX = SensorManager.AXIS_X;
+        int axisY = SensorManager.AXIS_Y;
+        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+
+        switch (rotation) {
+            case Surface.ROTATION_90:
+                axisX = SensorManager.AXIS_Y;
+                axisY = SensorManager.AXIS_MINUS_X;
+                break;
+            case Surface.ROTATION_180:
+                axisX = SensorManager.AXIS_MINUS_X;
+                axisY = SensorManager.AXIS_MINUS_Y;
+                break;
+            case Surface.ROTATION_270:
+                axisX = SensorManager.AXIS_MINUS_Y;
+                axisY = SensorManager.AXIS_X;
+                break;
+            case Surface.ROTATION_0:
+            default:
+                break;
+        }
+
+        SensorManager.remapCoordinateSystem(sourceRotationMatrix, axisX, axisY, outRotationMatrix);
+    }
+
+    private float smoothAzimuth(float previousAzimuth, float nextAzimuth) {
+        if (Float.isNaN(previousAzimuth)) {
+            return nextAzimuth;
+        }
+        float delta = ((nextAzimuth - previousAzimuth + 540f) % 360f) - 180f;
+        float smoothed = previousAzimuth + (delta * AZIMUTH_SMOOTHING_FACTOR);
+        if (smoothed < 0f) {
+            smoothed += 360f;
+        } else if (smoothed >= 360f) {
+            smoothed -= 360f;
+        }
+        return smoothed;
     }
 
     private void updateSensorInfoDisplay() {
@@ -456,9 +859,14 @@ public class MainActivity extends Activity implements SensorEventListener {
                     Locale.getDefault(),
                     "緯度: %.6f  経度: %.6f",
                     lastGpsLocation.getLatitude(),
-                    lastGpsLocation.getLongitude()));
+                    lastGpsLocation.getLongitude()
+            ));
         } else {
             sensorLines.add("緯度: --  経度: --");
+        }
+
+        if (routeSummaryLine != null) {
+            sensorLines.add(routeSummaryLine);
         }
 
         if (accelerometerSensor != null) {
@@ -467,7 +875,8 @@ public class MainActivity extends Activity implements SensorEventListener {
                     "加速度: X=%.2f Y=%.2f Z=%.2f m/s²",
                     accelerometerValues[0],
                     accelerometerValues[1],
-                    accelerometerValues[2]));
+                    accelerometerValues[2]
+            ));
         }
 
         if (magneticSensor != null) {
@@ -476,7 +885,8 @@ public class MainActivity extends Activity implements SensorEventListener {
                     "磁場: X=%.1f Y=%.1f Z=%.1f µT",
                     magneticValues[0],
                     magneticValues[1],
-                    magneticValues[2]));
+                    magneticValues[2]
+            ));
         }
 
         if (gyroSensor != null) {
@@ -498,8 +908,11 @@ public class MainActivity extends Activity implements SensorEventListener {
             return;
         }
         if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            subscribeGpsUpdates();
+            if (trackingEnabled) {
+                subscribeGpsUpdates();
+            }
         } else {
+            setTrackingEnabled(false);
             showToast("位置情報権限が拒否されました");
         }
     }

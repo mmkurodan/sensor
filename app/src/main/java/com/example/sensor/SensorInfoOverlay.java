@@ -49,6 +49,7 @@ public class SensorInfoOverlay extends View {
     private double altitude = Double.NaN;
     private boolean visible = true;
     private Runnable onReturnToLocationClicked;
+    private Runnable onPanelVisibilityChanged;
 
     public SensorInfoOverlay(Context context) {
         super(context);
@@ -147,6 +148,9 @@ public class SensorInfoOverlay extends View {
 
     public void toggleVisibility() {
         visible = !visible;
+        if (onPanelVisibilityChanged != null) {
+            onPanelVisibilityChanged.run();
+        }
         invalidate();
     }
 
@@ -154,8 +158,19 @@ public class SensorInfoOverlay extends View {
         onReturnToLocationClicked = callback;
     }
 
+    public void setOnPanelVisibilityChanged(Runnable callback) {
+        onPanelVisibilityChanged = callback;
+    }
+
     public boolean isVisible() {
         return visible;
+    }
+
+    public float getOccupiedBottomInset() {
+        if (!visible || getWidth() <= 0) {
+            return 0f;
+        }
+        return calculatePanelHeight(getWidth(), sensorInfoLines.isEmpty() ? DEFAULT_LOCATION_TEXT : sensorInfoLines.get(0));
     }
 
     @Override
@@ -203,25 +218,12 @@ public class SensorInfoOverlay extends View {
         locationPaint.setTextSize(fitTextSize(locationLine, width - panelPadding * 2f, sp(12), locationMaxTextSize));
 
         if (visible) {
-            float titleHeight = titlePaint.getFontSpacing();
             float locationHeight = locationPaint.getFontSpacing();
             float detailHeight = detailPaint.getFontSpacing();
             float labelHeight = labelPaint.getFontSpacing();
             float visualSize = width * VISUAL_SIZE_RATIO;
-            float visualLabelHeight = labelHeight * 3f + dp(8);
             float altitudeGaugeHeight = visualSize * 0.6f;
-            float detailBlockHeight = sensorInfoLines.size() > 1
-                    ? sectionSpacing + (sensorInfoLines.size() - 1) * detailHeight
-                    : 0f;
-            float panelHeight = panelPadding
-                    + locationHeight
-                    + sectionSpacing
-                    + visualSize
-                    + visualLabelHeight
-                    + altitudeGaugeHeight
-                    + sectionSpacing
-                    + detailBlockHeight
-                    + panelPadding;
+            float panelHeight = calculatePanelHeight(width, locationLine);
 
             panelRect.set(0, height - panelHeight, width, height);
             canvas.drawRoundRect(panelRect, dp(20), dp(20), backgroundPaint);
@@ -284,7 +286,7 @@ public class SensorInfoOverlay extends View {
 
         canvas.save();
         if (!Float.isNaN(compassAzimuth)) {
-            canvas.rotate(compassAzimuth, centerX, centerY);
+            canvas.rotate(-compassAzimuth, centerX, centerY);
         }
 
         Path needlePath = new Path();
@@ -393,6 +395,33 @@ public class SensorInfoOverlay extends View {
 
     private float clamp(float value, float min, float max) {
         return Math.max(min, Math.min(max, value));
+    }
+
+    private float calculatePanelHeight(float width, String locationLine) {
+        float panelPadding = dp(18);
+        float sectionSpacing = dp(14);
+        float locationMaxTextSize = Math.min(sp(40), width * 0.12f);
+        locationPaint.setTextSize(fitTextSize(locationLine, width - panelPadding * 2f, sp(12), locationMaxTextSize));
+
+        float locationHeight = locationPaint.getFontSpacing();
+        float detailHeight = detailPaint.getFontSpacing();
+        float labelHeight = labelPaint.getFontSpacing();
+        float visualSize = width * VISUAL_SIZE_RATIO;
+        float visualLabelHeight = labelHeight * 3f + dp(8);
+        float altitudeGaugeHeight = visualSize * 0.6f;
+        float detailBlockHeight = sensorInfoLines.size() > 1
+                ? sectionSpacing + (sensorInfoLines.size() - 1) * detailHeight
+                : 0f;
+
+        return panelPadding
+                + locationHeight
+                + sectionSpacing
+                + visualSize
+                + visualLabelHeight
+                + altitudeGaugeHeight
+                + sectionSpacing
+                + detailBlockHeight
+                + panelPadding;
     }
 
     private float dp(float value) {
