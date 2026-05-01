@@ -39,6 +39,7 @@ public class SensorInfoOverlay extends View {
     private final List<String> sensorInfoLines = new ArrayList<>();
     private final float[] gyroValues = new float[3];
     private final RectF panelRect = new RectF();
+    private final RectF routeGraphButtonRect = new RectF();
     private final RectF trackingButtonRect = new RectF();
     private final RectF toggleButtonRect = new RectF();
     private final RectF returnButtonRect = new RectF();
@@ -49,7 +50,9 @@ public class SensorInfoOverlay extends View {
     private float compassAzimuth = Float.NaN;
     private double altitude = Double.NaN;
     private boolean visible = true;
+    private boolean routeGraphVisible;
     private boolean trackingCenteringEnabled = true;
+    private Runnable onRouteGraphToggleClicked;
     private Runnable onReturnToLocationClicked;
     private Runnable onTrackingCenteringToggleClicked;
     private Runnable onPanelVisibilityChanged;
@@ -161,6 +164,10 @@ public class SensorInfoOverlay extends View {
         onReturnToLocationClicked = callback;
     }
 
+    public void setOnRouteGraphToggleClicked(Runnable callback) {
+        onRouteGraphToggleClicked = callback;
+    }
+
     public void setOnTrackingCenteringToggleClicked(Runnable callback) {
         onTrackingCenteringToggleClicked = callback;
     }
@@ -171,6 +178,11 @@ public class SensorInfoOverlay extends View {
 
     public void setTrackingCenteringEnabled(boolean enabled) {
         trackingCenteringEnabled = enabled;
+        invalidate();
+    }
+
+    public void setRouteGraphVisible(boolean visible) {
+        routeGraphVisible = visible;
         invalidate();
     }
 
@@ -200,12 +212,13 @@ public class SensorInfoOverlay extends View {
         float buttonCornerRadius = dp(12);
 
         String locationLine = sensorInfoLines.isEmpty() ? DEFAULT_LOCATION_TEXT : sensorInfoLines.get(0);
+        String routeGraphLabel = routeGraphVisible ? "経路網 ON" : "経路網 OFF";
         String trackingLabel = trackingCenteringEnabled ? "追跡/中心 ON" : "追跡/中心 OFF";
         String toggleLabel = visible ? "情報を隠す" : "情報を表示";
         String returnLabel = "現在地に戻る";
 
         float maxButtonTextWidth = Math.max(
-                buttonTextPaint.measureText(trackingLabel),
+                Math.max(buttonTextPaint.measureText(routeGraphLabel), buttonTextPaint.measureText(trackingLabel)),
                 Math.max(buttonTextPaint.measureText(toggleLabel), buttonTextPaint.measureText(returnLabel))
         );
         float buttonWidth = Math.max(dp(128), maxButtonTextWidth + buttonHorizontalPadding * 2f);
@@ -217,6 +230,14 @@ public class SensorInfoOverlay extends View {
         float toggleButtonBottom = height - bottomMargin;
         float returnButtonBottom = toggleButtonBottom - buttonHeight - buttonVerticalSpacing;
         float trackingButtonBottom = returnButtonBottom - buttonHeight - buttonVerticalSpacing;
+        float routeGraphButtonBottom = trackingButtonBottom - buttonHeight - buttonVerticalSpacing;
+
+        routeGraphButtonRect.set(
+                buttonLeft,
+                routeGraphButtonBottom - buttonHeight,
+                buttonRight,
+                routeGraphButtonBottom
+        );
 
         trackingButtonRect.set(
                 buttonLeft,
@@ -291,6 +312,7 @@ public class SensorInfoOverlay extends View {
             }
         }
 
+        drawButton(canvas, routeGraphButtonRect, routeGraphLabel, buttonCornerRadius);
         drawButton(canvas, trackingButtonRect, trackingLabel, buttonCornerRadius);
         drawButton(canvas, returnButtonRect, returnLabel, buttonCornerRadius);
         drawButton(canvas, toggleButtonRect, toggleLabel, buttonCornerRadius);
@@ -463,10 +485,18 @@ public class SensorInfoOverlay extends View {
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                return trackingButtonRect.contains(x, y)
+                return routeGraphButtonRect.contains(x, y)
+                        || trackingButtonRect.contains(x, y)
                         || returnButtonRect.contains(x, y)
                         || toggleButtonRect.contains(x, y);
             case MotionEvent.ACTION_UP:
+                if (routeGraphButtonRect.contains(x, y)) {
+                    performClick();
+                    if (onRouteGraphToggleClicked != null) {
+                        onRouteGraphToggleClicked.run();
+                    }
+                    return true;
+                }
                 if (trackingButtonRect.contains(x, y)) {
                     performClick();
                     if (onTrackingCenteringToggleClicked != null) {

@@ -69,6 +69,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private Marker gpsMarker;
     private Marker destinationMarker;
     private Polyline routePolyline;
+    private RouteGraphOverlay routeGraphOverlay;
     private StraightLineOverlay straightLineOverlay;
     private SensorInfoOverlay sensorInfoOverlay;
     private PlatformAddressGeocoder addressGeocoder;
@@ -85,6 +86,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private final float[] orientationAngles = new float[3];
     private boolean hasAccelerometerReading;
     private boolean hasMagneticReading;
+    private boolean routeGraphOverlayEnabled;
     private boolean trackingEnabled = true;
     private boolean centeringEnabled = true;
     private float smoothedAzimuth = Float.NaN;
@@ -145,6 +147,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         sensorInfoOverlay = new SensorInfoOverlay(this);
         sensorInfoOverlay.setOnReturnToLocationClicked(this::recenterOnCurrentLocation);
+        sensorInfoOverlay.setOnRouteGraphToggleClicked(this::toggleRouteGraphOverlay);
         sensorInfoOverlay.setOnTrackingCenteringToggleClicked(this::toggleTrackingAndCentering);
         sensorInfoOverlay.setOnPanelVisibilityChanged(() -> {
             if (centeringEnabled && lastGpsLocation != null) {
@@ -159,6 +162,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         root.addView(sensorInfoOverlay);
 
         setContentView(root);
+        updateRouteGraphOverlayToggle();
         updateTrackingCenteringToggle();
     }
 
@@ -189,6 +193,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         createdMapView.getController().setCenter(DEFAULT_START_POINT);
         createdMapView.getMapOverlay().setEnabled(true);
 
+        routeGraphOverlay = new RouteGraphOverlay(this);
         straightLineOverlay = new StraightLineOverlay(this);
         routePolyline = new Polyline();
         routePolyline.getOutlinePaint().setColor(Color.parseColor("#FF7043"));
@@ -210,6 +215,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         destinationMarker.setVisible(false);
 
         createdMapView.getOverlays().add(new CoordinateGridOverlay(this));
+        createdMapView.getOverlays().add(routeGraphOverlay);
         createdMapView.getOverlays().add(routePolyline);
         createdMapView.getOverlays().add(straightLineOverlay);
         createdMapView.getOverlays().add(createDestinationSelectionOverlay());
@@ -466,6 +472,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         if (routePolyline != null) {
             routePolyline.setPoints(new ArrayList<>());
         }
+        if (routeGraphOverlay != null) {
+            routeGraphOverlay.clear();
+        }
         activeRoutePoints.clear();
         straightLineOverlay.setLine(lastGpsLocation, destinationLocation, formatDistanceValue(distanceMeters));
         routeSummaryLine = "直線距離: " + formatDistanceValue(distanceMeters);
@@ -489,6 +498,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
         if (straightLineOverlay != null) {
             straightLineOverlay.clear();
+        }
+        if (routeGraphOverlay != null) {
+            routeGraphOverlay.clear();
         }
         updateSensorInfoDisplay();
         if (mapView != null) {
@@ -645,6 +657,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         activeRoutePoints.clear();
         activeRoutePoints.addAll(routeResult.getPoints());
         routePolyline.setPoints(new ArrayList<>(activeRoutePoints));
+        if (routeGraphOverlay != null) {
+            routeGraphOverlay.setRouteGraph(routeResult.getRouteGraph());
+        }
         if (straightLineOverlay != null) {
             straightLineOverlay.clear();
         }
@@ -774,6 +789,23 @@ public class MainActivity extends Activity implements SensorEventListener {
     private void updateTrackingCenteringToggle() {
         if (sensorInfoOverlay != null) {
             sensorInfoOverlay.setTrackingCenteringEnabled(trackingEnabled && centeringEnabled);
+        }
+    }
+
+    private void toggleRouteGraphOverlay() {
+        routeGraphOverlayEnabled = !routeGraphOverlayEnabled;
+        updateRouteGraphOverlayToggle();
+        if (mapView != null) {
+            mapView.invalidate();
+        }
+    }
+
+    private void updateRouteGraphOverlayToggle() {
+        if (routeGraphOverlay != null) {
+            routeGraphOverlay.setGraphVisible(routeGraphOverlayEnabled);
+        }
+        if (sensorInfoOverlay != null) {
+            sensorInfoOverlay.setRouteGraphVisible(routeGraphOverlayEnabled);
         }
     }
 

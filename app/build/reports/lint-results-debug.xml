@@ -13,7 +13,7 @@
         errorLine2="                      ~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="192"
+            line="204"
             column="23"/>
     </issue>
 
@@ -29,7 +29,7 @@
         errorLine2="                       ~~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="193"
+            line="205"
             column="24"/>
     </issue>
 
@@ -95,7 +95,7 @@
         errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="268"
+            line="289"
             column="39"/>
     </issue>
 
@@ -111,7 +111,7 @@
         errorLine2="                    ^">
         <location
             file="/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java"
-            line="271"
+            line="292"
             column="21"/>
     </issue>
 
