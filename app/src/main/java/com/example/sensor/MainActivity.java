@@ -57,7 +57,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final long ROUTE_REQUEST_MIN_INTERVAL_MS = 5000L;
     private static final float ROUTE_REQUEST_MIN_MOVEMENT_METERS = 25f;
     private static final float ROUTE_REQUEST_MIN_DESTINATION_DELTA_METERS = 5f;
-    private static final long ROUTE_FAILURE_TOAST_INTERVAL_MS = 10000L;
     private static final GeoPoint DEFAULT_START_POINT = new GeoPoint(35.6762, 139.6503);
 
     private SensorManager sensorManager;
@@ -73,7 +72,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private StraightLineOverlay straightLineOverlay;
     private SensorInfoOverlay sensorInfoOverlay;
     private PlatformAddressGeocoder addressGeocoder;
-    private OsrmRouteService routeService;
+    private RoutePlanner routePlanner;
     private EditText addressInput;
     private LinearLayout searchResultsContainer;
     private ScrollView searchResultsScrollView;
@@ -94,7 +93,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     private GeoPoint lastRouteOrigin;
     private GeoPoint lastRouteDestination;
     private long lastRouteRequestElapsedMs;
-    private long lastRouteFailureToastElapsedMs;
     private int routeRequestGeneration;
     private String routeSummaryLine;
 
@@ -129,7 +127,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
         addressGeocoder = new PlatformAddressGeocoder(this);
-        routeService = new OsrmRouteService(this);
+        routePlanner = new RoutePlanner();
 
         if (sensorManager != null) {
             rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
@@ -571,7 +569,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     private String formatRouteSummary(double distanceMeters, double durationSeconds) {
-        return "経路: " + formatDistanceValue(distanceMeters) + " / 約" + formatDurationValue(durationSeconds);
+        return "経路: " + formatDistanceValue(distanceMeters) + " / 推定" + formatDurationValue(durationSeconds);
     }
 
     private void requestRouteToDestination(boolean adjustViewport) {
@@ -582,7 +580,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         GeoPoint routeOrigin = new GeoPoint(lastGpsLocation.getLatitude(), lastGpsLocation.getLongitude());
         GeoPoint routeDestination = new GeoPoint(destinationLocation.getLatitude(), destinationLocation.getLongitude());
-        if (routeService == null) {
+        if (routePlanner == null) {
             updateStraightLineToDestination(adjustViewport);
             return;
         }
@@ -599,7 +597,9 @@ public class MainActivity extends Activity implements SensorEventListener {
             return;
         }
 
-        updateStraightLineToDestination(adjustViewport);
+        if (activeRoutePoints.isEmpty()) {
+            updateStraightLineToDestination(adjustViewport);
+        }
 
         final int requestId = ++routeRequestGeneration;
         final GeoPoint requestOrigin = routeOrigin;
@@ -609,16 +609,12 @@ public class MainActivity extends Activity implements SensorEventListener {
         lastRouteOrigin = requestOrigin;
         lastRouteDestination = requestDestination;
         lastRouteRequestElapsedMs = SystemClock.elapsedRealtime();
-        routeSummaryLine = "経路を取得中...";
+        routeSummaryLine = "経路を計算中...";
         updateSensorInfoDisplay();
 
         new Thread(() -> {
-            try {
-                OsrmRouteService.RouteResult routeResult = routeService.fetchRoute(requestOrigin, requestDestination);
-                runOnUiThread(() -> applyRouteResult(requestId, routeResult, shouldAdjustViewport));
-            } catch (IOException e) {
-                runOnUiThread(() -> applyRouteFailure(requestId, shouldAdjustViewport));
-            }
+            RoutePlanner.RouteResult routeResult = routePlanner.findRoute(requestOrigin, requestDestination);
+            runOnUiThread(() -> applyRouteResult(requestId, routeResult, shouldAdjustViewport));
         }).start();
     }
 
@@ -641,7 +637,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         return origin.distanceToAsDouble(lastRouteOrigin) >= ROUTE_REQUEST_MIN_MOVEMENT_METERS;
     }
 
-    private void applyRouteResult(int requestId, OsrmRouteService.RouteResult routeResult, boolean adjustViewport) {
+    private void applyRouteResult(int requestId, RoutePlanner.RouteResult routeResult, boolean adjustViewport) {
         if (requestId != routeRequestGeneration || mapView == null || routePolyline == null || routeResult == null) {
             return;
         }
@@ -661,24 +657,6 @@ public class MainActivity extends Activity implements SensorEventListener {
             mapView.zoomToBoundingBox(boundingBox, true);
         }
         mapView.invalidate();
-    }
-
-    private void applyRouteFailure(int requestId, boolean adjustViewport) {
-        if (requestId != routeRequestGeneration || destinationLocation == null) {
-            return;
-        }
-
-        updateStraightLineToDestination(adjustViewport);
-        if (routeSummaryLine != null) {
-            routeSummaryLine = "経路取得失敗 / " + routeSummaryLine;
-            updateSensorInfoDisplay();
-        }
-
-        long now = SystemClock.elapsedRealtime();
-        if (now - lastRouteFailureToastElapsedMs >= ROUTE_FAILURE_TOAST_INTERVAL_MS) {
-            lastRouteFailureToastElapsedMs = now;
-            showToast("経路を取得できないため直線距離を表示します");
-        }
     }
 
     private void hideKeyboard() {
