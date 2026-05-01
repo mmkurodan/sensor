@@ -4,7 +4,18 @@ import android.content.Context;
 import android.location.Address;
 import android.location.Geocoder;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -14,9 +25,11 @@ import java.util.Locale;
 public class PlatformAddressGeocoder {
 
     private final Geocoder geocoder;
+    private final String userAgent;
 
     public PlatformAddressGeocoder(Context context) {
         geocoder = new Geocoder(context.getApplicationContext(), Locale.JAPAN);
+        userAgent = context.getApplicationContext().getPackageName();
     }
 
     public List<SearchResult> search(String query, int limit) throws IOException {
@@ -24,31 +37,135 @@ public class PlatformAddressGeocoder {
         if (normalizedQuery.isEmpty()) {
             return new ArrayList<>();
         }
-        if (!Geocoder.isPresent()) {
-            throw new IOException("住所検索サービスを利用できません");
+
+        int safeLimit = Math.max(1, limit);
+        IOException platformFailure = null;
+
+        if (Geocoder.isPresent()) {
+            try {
+                List<SearchResult> platformResults = searchWithPlatformGeocoder(normalizedQuery, safeLimit);
+                if (!platformResults.isEmpty()) {
+                    return platformResults;
+                }
+            } catch (IOException e) {
+                platformFailure = e;
+            }
         }
 
-        List<Address> addresses = geocoder.getFromLocationName(normalizedQuery, Math.max(1, limit));
+        try {
+            return searchWithNominatim(normalizedQuery, safeLimit);
+        } catch (IOException networkFailure) {
+            if (platformFailure != null) {
+                IOException combined = new IOException("住所検索に失敗しました");
+                combined.addSuppressed(platformFailure);
+                combined.addSuppressed(networkFailure);
+                throw combined;
+            }
+            throw networkFailure;
+        }
+    }
+
+    private List<SearchResult> searchWithPlatformGeocoder(String normalizedQuery, int limit) throws IOException {
+        List<Address> addresses = geocoder.getFromLocationName(normalizedQuery, limit);
         if (addresses == null || addresses.isEmpty()) {
             return new ArrayList<>();
         }
+        return deduplicatePlatformResults(addresses, normalizedQuery, limit);
+    }
 
+    private List<SearchResult> searchWithNominatim(String normalizedQuery, int limit) throws IOException {
+        HttpURLConnection connection = null;
+        try {
+            String encodedQuery = URLEncoder.encode(normalizedQuery, StandardCharsets.UTF_8.name());
+            URL url = new URL(
+                    "https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&accept-language=ja&limit="
+                            + limit
+                            + "&q="
+                            + encodedQuery
+            );
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            connection.setRequestProperty("User-Agent", userAgent);
+            connection.setRequestProperty("Accept", "application/json");
+
+            int responseCode = connection.getResponseCode();
+            InputStream responseStream = responseCode >= 200 && responseCode < 300
+                    ? connection.getInputStream()
+                    : connection.getErrorStream();
+            String responseBody = readResponseBody(responseStream);
+
+            if (responseCode < 200 || responseCode >= 300) {
+                throw new IOException("住所検索サービスが応答しませんでした (" + responseCode + ")");
+            }
+
+            JSONArray resultsJson = new JSONArray(responseBody);
+            LinkedHashMap<String, SearchResult> uniqueResults = new LinkedHashMap<>();
+            for (int i = 0; i < resultsJson.length(); i++) {
+                JSONObject item = resultsJson.getJSONObject(i);
+                double latitude = Double.parseDouble(item.optString("lat", "NaN"));
+                double longitude = Double.parseDouble(item.optString("lon", "NaN"));
+                if (Double.isNaN(latitude) || Double.isNaN(longitude)) {
+                    continue;
+                }
+
+                String displayName = item.optString("display_name", normalizedQuery).trim();
+                if (displayName.isEmpty()) {
+                    displayName = normalizedQuery;
+                }
+
+                addUniqueResult(uniqueResults, new SearchResult(displayName, latitude, longitude));
+                if (uniqueResults.size() >= limit) {
+                    break;
+                }
+            }
+            return new ArrayList<>(uniqueResults.values());
+        } catch (JSONException e) {
+            throw new IOException("住所検索結果の解析に失敗しました", e);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private List<SearchResult> deduplicatePlatformResults(List<Address> addresses, String fallbackDisplayName, int limit) {
         LinkedHashMap<String, SearchResult> uniqueResults = new LinkedHashMap<>();
         for (Address address : addresses) {
             if (address == null || !address.hasLatitude() || !address.hasLongitude()) {
                 continue;
             }
 
-            String displayName = buildDisplayName(address, normalizedQuery);
-            String key = normalizeForComparison(displayName)
-                    + "@"
-                    + String.format(Locale.US, "%.6f,%.6f", address.getLatitude(), address.getLongitude());
-            uniqueResults.put(key, new SearchResult(displayName, address.getLatitude(), address.getLongitude()));
+            String displayName = buildDisplayName(address, fallbackDisplayName);
+            addUniqueResult(uniqueResults, new SearchResult(displayName, address.getLatitude(), address.getLongitude()));
             if (uniqueResults.size() >= limit) {
                 break;
             }
         }
         return new ArrayList<>(uniqueResults.values());
+    }
+
+    private void addUniqueResult(LinkedHashMap<String, SearchResult> uniqueResults, SearchResult result) {
+        String key = normalizeForComparison(result.getDisplayName())
+                + "@"
+                + String.format(Locale.US, "%.6f,%.6f", result.getLatitude(), result.getLongitude());
+        uniqueResults.put(key, result);
+    }
+
+    private String readResponseBody(InputStream stream) throws IOException {
+        if (stream == null) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line);
+            }
+        }
+        return builder.toString();
     }
 
     private String buildDisplayName(Address address, String fallbackDisplayName) {
