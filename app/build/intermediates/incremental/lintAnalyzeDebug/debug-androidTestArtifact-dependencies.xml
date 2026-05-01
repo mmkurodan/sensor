@@ -1,11 +1,11 @@
 <dependencies>
   <compile
-      roots=":@@:app::debug,org.osmdroid:osmdroid-android:6.1.10@aar,androidx.core:core:1.13.1@aar,androidx.lifecycle:lifecycle-common:2.6.2@jar,androidx.lifecycle:lifecycle-runtime:2.6.2@aar,androidx.versionedparcelable:versionedparcelable:1.1.1@aar,androidx.arch.core:core-common:2.2.0@jar,androidx.collection:collection:1.0.0@jar,androidx.annotation:annotation-experimental:1.4.0@aar,androidx.annotation:annotation-jvm:1.6.0@jar,org.jetbrains.kotlin:kotlin-stdlib:1.8.22@jar,org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4@jar,org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4@jar,org.jetbrains.kotlin:kotlin-stdlib-common:1.8.22@jar,org.jetbrains:annotations:13.0@jar">
+      roots=":@@:app::debug,org.osmdroid:osmdroid-android:6.1.16@aar,androidx.core:core:1.13.1@aar,androidx.lifecycle:lifecycle-common:2.6.2@jar,androidx.lifecycle:lifecycle-runtime:2.6.2@aar,androidx.versionedparcelable:versionedparcelable:1.1.1@aar,androidx.arch.core:core-common:2.2.0@jar,androidx.collection:collection:1.0.0@jar,androidx.annotation:annotation-experimental:1.4.0@aar,androidx.annotation:annotation-jvm:1.6.0@jar,org.jetbrains.kotlin:kotlin-stdlib:1.8.22@jar,org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4@jar,org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4@jar,org.jetbrains.kotlin:kotlin-stdlib-common:1.8.22@jar,org.jetbrains:annotations:13.0@jar">
     <dependency
         name=":@@:app::debug"
         simpleName="artifacts::app"/>
     <dependency
-        name="org.osmdroid:osmdroid-android:6.1.10@aar"
+        name="org.osmdroid:osmdroid-android:6.1.16@aar"
         simpleName="org.osmdroid:osmdroid-android"/>
     <dependency
         name="androidx.core:core:1.13.1@aar"

@@ -64,30 +64,30 @@
 37-->[androidx.core:core:1.13.1] /root/.gradle/caches/8.12/transforms/98f20b9a0e85fd1724e23c3abe49ee4f/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
 38
 39    <application
-39-->/root/sensor/app/src/main/AndroidManifest.xml:7:5-22:19
+39-->/root/sensor/app/src/main/AndroidManifest.xml:6:5-21:19
 40        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
 40-->[androidx.core:core:1.13.1] /root/.gradle/caches/8.12/transforms/98f20b9a0e85fd1724e23c3abe49ee4f/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
 41        android:debuggable="true"
 42        android:extractNativeLibs="false"
 43        android:label="sensor"
-43-->/root/sensor/app/src/main/AndroidManifest.xml:8:9-31
+43-->/root/sensor/app/src/main/AndroidManifest.xml:7:9-31
 44        android:theme="@android:style/Theme.Material.Light.NoActionBar" >
-44-->/root/sensor/app/src/main/AndroidManifest.xml:9:9-72
+44-->/root/sensor/app/src/main/AndroidManifest.xml:8:9-72
 45        <activity
-45-->/root/sensor/app/src/main/AndroidManifest.xml:11:9-20:20
+45-->/root/sensor/app/src/main/AndroidManifest.xml:10:9-19:20
 46            android:name="com.example.sensor.MainActivity"
-46-->/root/sensor/app/src/main/AndroidManifest.xml:12:13-41
+46-->/root/sensor/app/src/main/AndroidManifest.xml:11:13-41
 47            android:exported="true" >
-47-->/root/sensor/app/src/main/AndroidManifest.xml:13:13-36
+47-->/root/sensor/app/src/main/AndroidManifest.xml:12:13-36
 48            <intent-filter>
-48-->/root/sensor/app/src/main/AndroidManifest.xml:15:13-18:29
+48-->/root/sensor/app/src/main/AndroidManifest.xml:14:13-17:29
 49                <action android:name="android.intent.action.MAIN" />
-49-->/root/sensor/app/src/main/AndroidManifest.xml:16:17-69
-49-->/root/sensor/app/src/main/AndroidManifest.xml:16:25-66
+49-->/root/sensor/app/src/main/AndroidManifest.xml:15:17-69
+49-->/root/sensor/app/src/main/AndroidManifest.xml:15:25-66
 50
 51                <category android:name="android.intent.category.LAUNCHER" />
-51-->/root/sensor/app/src/main/AndroidManifest.xml:17:17-77
-51-->/root/sensor/app/src/main/AndroidManifest.xml:17:27-74
+51-->/root/sensor/app/src/main/AndroidManifest.xml:16:17-77
+51-->/root/sensor/app/src/main/AndroidManifest.xml:16:27-74
 52            </intent-filter>
 53        </activity>
 54

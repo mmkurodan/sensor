@@ -16,6 +16,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
@@ -32,13 +33,12 @@ import androidx.core.content.ContextCompat;
 
 import org.osmdroid.api.IGeoPoint;
 import org.osmdroid.config.Configuration;
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.BoundingBox;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.Projection;
 import org.osmdroid.views.overlay.Marker;
-import org.osmdroid.views.overlay.Polyline;
+import org.osmdroid.views.overlay.Overlay;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -61,11 +61,10 @@ public class MainActivity extends Activity implements SensorEventListener {
     private LocationManager locationManager;
     private MapView mapView;
     private Marker gpsMarker;
-    private Marker searchMarker;
-    private Polyline routePolyline;
+    private Marker destinationMarker;
+    private StraightLineOverlay straightLineOverlay;
     private SensorInfoOverlay sensorInfoOverlay;
-    private OnlineAddressGeocoder onlineAddressGeocoder;
-    private OnlineRouteService onlineRouteService;
+    private PlatformAddressGeocoder addressGeocoder;
     private EditText addressInput;
     private LinearLayout searchResultsContainer;
     private ScrollView searchResultsScrollView;
@@ -81,7 +80,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     private boolean centeringEnabled = true;
     private float smoothedAzimuth = Float.NaN;
     private GeoPoint lastGpsLocation;
-    private GeoPoint lastSearchLocation;
+    private GeoPoint destinationLocation;
     private String routeSummaryLine;
 
     private final LocationListener gpsLocationListener = new LocationListener() {
@@ -114,8 +113,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-        onlineAddressGeocoder = new OnlineAddressGeocoder(this);
-        onlineRouteService = new OnlineRouteService(this);
+        addressGeocoder = new PlatformAddressGeocoder(this);
 
         if (sensorManager != null) {
             rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
@@ -168,16 +166,14 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private MapView createMapView() {
         MapView createdMapView = new MapView(this);
-        createdMapView.setTileSource(TileSourceFactory.MAPNIK);
-        createdMapView.setUseDataConnection(true);
+        createdMapView.setUseDataConnection(false);
         createdMapView.setMultiTouchControls(true);
         createdMapView.setBackgroundColor(Color.parseColor("#101820"));
         createdMapView.getController().setZoom(6.0);
         createdMapView.getController().setCenter(DEFAULT_START_POINT);
+        createdMapView.getMapOverlay().setEnabled(false);
 
-        routePolyline = new Polyline();
-        routePolyline.setColor(Color.parseColor("#4FC3F7"));
-        routePolyline.setWidth(dp(4));
+        straightLineOverlay = new StraightLineOverlay(this);
 
         gpsMarker = new Marker(createdMapView);
         gpsMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
@@ -186,16 +182,17 @@ public class MainActivity extends Activity implements SensorEventListener {
         gpsMarker.setInfoWindow(null);
         gpsMarker.setVisible(false);
 
-        searchMarker = new Marker(createdMapView);
-        searchMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-        searchMarker.setIcon(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_search));
-        searchMarker.setTitle("検索地点");
-        searchMarker.setInfoWindow(null);
-        searchMarker.setVisible(false);
+        destinationMarker = new Marker(createdMapView);
+        destinationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+        destinationMarker.setIcon(ContextCompat.getDrawable(this, android.R.drawable.ic_menu_search));
+        destinationMarker.setTitle("目的地");
+        destinationMarker.setInfoWindow(null);
+        destinationMarker.setVisible(false);
 
         createdMapView.getOverlays().add(new CoordinateGridOverlay(this));
-        createdMapView.getOverlays().add(routePolyline);
-        createdMapView.getOverlays().add(searchMarker);
+        createdMapView.getOverlays().add(straightLineOverlay);
+        createdMapView.getOverlays().add(createDestinationSelectionOverlay());
+        createdMapView.getOverlays().add(destinationMarker);
         createdMapView.getOverlays().add(gpsMarker);
 
         FrameLayout.LayoutParams mapParams = new FrameLayout.LayoutParams(
@@ -204,6 +201,37 @@ public class MainActivity extends Activity implements SensorEventListener {
         );
         createdMapView.setLayoutParams(mapParams);
         return createdMapView;
+    }
+
+    private Overlay createDestinationSelectionOverlay() {
+        return new Overlay() {
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent event, MapView tappedMapView) {
+                Projection projection = tappedMapView.getProjection();
+                if (projection == null) {
+                    return false;
+                }
+
+                IGeoPoint tappedPoint = projection.fromPixels(Math.round(event.getX()), Math.round(event.getY()));
+                if (tappedPoint == null) {
+                    return false;
+                }
+
+                applyDestinationSelection(
+                        new GeoPoint(tappedPoint.getLatitude(), tappedPoint.getLongitude()),
+                        "目的地",
+                        false
+                );
+                return true;
+            }
+
+            @Override
+            public boolean onLongPress(MotionEvent event, MapView tappedMapView) {
+                clearDestination();
+                showToast("目的地をクリアしました");
+                return true;
+            }
+        };
     }
 
     private LinearLayout createSearchPanel() {
@@ -288,7 +316,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         new Thread(() -> {
             try {
-                List<OnlineAddressGeocoder.SearchResult> results = onlineAddressGeocoder.search(query, SEARCH_RESULT_LIMIT);
+                List<PlatformAddressGeocoder.SearchResult> results = addressGeocoder.search(query, SEARCH_RESULT_LIMIT);
                 runOnUiThread(() -> showSearchCandidates(results));
             } catch (IOException e) {
                 runOnUiThread(() -> {
@@ -299,7 +327,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         }).start();
     }
 
-    private void showSearchCandidates(List<OnlineAddressGeocoder.SearchResult> results) {
+    private void showSearchCandidates(List<PlatformAddressGeocoder.SearchResult> results) {
         if (searchResultsContainer == null || searchResultsScrollView == null) {
             return;
         }
@@ -320,7 +348,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         headerView.setPadding(dp(4), dp(2), dp(4), dp(6));
         searchResultsContainer.addView(headerView);
 
-        for (OnlineAddressGeocoder.SearchResult result : results) {
+        for (PlatformAddressGeocoder.SearchResult result : results) {
             TextView candidateView = new TextView(this);
             candidateView.setText(result.getDisplayName());
             candidateView.setTextColor(Color.WHITE);
@@ -352,28 +380,31 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
     }
 
-    private void applySearchSelection(OnlineAddressGeocoder.SearchResult result) {
-        if (result == null) {
+    private void applyDestinationSelection(GeoPoint destination, String title, boolean updateSearchField) {
+        if (destination == null) {
             return;
         }
-        if (mapView == null || searchMarker == null) {
+        if (mapView == null || destinationMarker == null) {
             showToast("地図の初期化が完了していません");
             return;
         }
 
         hideSearchCandidates();
-        addressInput.setText(result.getDisplayName());
-        lastSearchLocation = new GeoPoint(result.getLatitude(), result.getLongitude());
+        destinationLocation = new GeoPoint(destination.getLatitude(), destination.getLongitude());
 
-        searchMarker.setPosition(lastSearchLocation);
-        searchMarker.setTitle(result.getDisplayName());
-        searchMarker.setSubDescription(String.format(
+        if (updateSearchField && addressInput != null) {
+            addressInput.setText(title);
+        }
+
+        destinationMarker.setPosition(destinationLocation);
+        destinationMarker.setTitle(title);
+        destinationMarker.setSubDescription(String.format(
                 Locale.getDefault(),
                 "緯度: %.6f  経度: %.6f",
-                result.getLatitude(),
-                result.getLongitude()
+                destinationLocation.getLatitude(),
+                destinationLocation.getLongitude()
         ));
-        searchMarker.setVisible(true);
+        destinationMarker.setVisible(true);
 
         if (trackingEnabled || centeringEnabled) {
             setTrackingAndCenteringEnabled(false);
@@ -381,52 +412,42 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
 
         if (lastGpsLocation != null) {
-            fetchRouteToSearchLocation(lastGpsLocation, lastSearchLocation);
+            updateStraightLineToDestination(true);
         } else {
             clearRoute();
             mapView.getController().setZoom(16.0);
-            mapView.getController().setCenter(lastSearchLocation);
+            mapView.getController().setCenter(destinationLocation);
             mapView.invalidate();
         }
     }
 
-    private void fetchRouteToSearchLocation(GeoPoint start, GeoPoint destination) {
-        new Thread(() -> {
-            try {
-                OnlineRouteService.RouteResult routeResult = onlineRouteService.fetchRoute(start, destination);
-                runOnUiThread(() -> applyRouteResult(routeResult, destination));
-            } catch (IOException e) {
-                runOnUiThread(() -> {
-                    clearRoute();
-                    mapView.getController().setZoom(16.0);
-                    mapView.getController().setCenter(destination);
-                    mapView.invalidate();
-                    showToast("ルート取得に失敗しました");
-                });
-            }
-        }).start();
-    }
-
-    private void applyRouteResult(OnlineRouteService.RouteResult routeResult, GeoPoint fallbackDestination) {
-        if (mapView == null || routePolyline == null) {
+    private void applySearchSelection(PlatformAddressGeocoder.SearchResult result) {
+        if (result == null) {
             return;
         }
+        applyDestinationSelection(
+                new GeoPoint(result.getLatitude(), result.getLongitude()),
+                result.getDisplayName(),
+                true
+        );
+    }
 
-        if (routeResult == null || routeResult.getPoints().isEmpty()) {
+    private void updateStraightLineToDestination(boolean adjustViewport) {
+        if (mapView == null || straightLineOverlay == null) {
+            return;
+        }
+        if (lastGpsLocation == null || destinationLocation == null) {
             clearRoute();
-            mapView.getController().setZoom(16.0);
-            mapView.getController().setCenter(fallbackDestination);
-            mapView.invalidate();
-            showToast("ルートが見つかりませんでした");
             return;
         }
 
-        routePolyline.setPoints(routeResult.getPoints());
-        routeSummaryLine = formatRouteSummary(routeResult);
+        double distanceMeters = lastGpsLocation.distanceToAsDouble(destinationLocation);
+        straightLineOverlay.setLine(lastGpsLocation, destinationLocation, formatDistanceValue(distanceMeters));
+        routeSummaryLine = "直線距離: " + formatDistanceValue(distanceMeters);
         updateSensorInfoDisplay();
 
-        BoundingBox boundingBox = createBoundingBox(routeResult.getPoints());
-        if (boundingBox != null) {
+        BoundingBox boundingBox = createBoundingBox(lastGpsLocation, destinationLocation);
+        if (adjustViewport && boundingBox != null) {
             mapView.zoomToBoundingBox(boundingBox, true);
         }
         mapView.invalidate();
@@ -434,8 +455,8 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private void clearRoute() {
         routeSummaryLine = null;
-        if (routePolyline != null) {
-            routePolyline.setPoints(new ArrayList<>());
+        if (straightLineOverlay != null) {
+            straightLineOverlay.clear();
         }
         updateSensorInfoDisplay();
         if (mapView != null) {
@@ -443,35 +464,51 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
     }
 
-    private BoundingBox createBoundingBox(List<GeoPoint> points) {
-        if (points == null || points.isEmpty()) {
-            return null;
+    private void clearDestination() {
+        destinationLocation = null;
+        if (destinationMarker != null) {
+            destinationMarker.setVisible(false);
         }
+        clearRoute();
+    }
 
+    private BoundingBox createBoundingBox(GeoPoint... points) {
         double north = -90d;
         double south = 90d;
         double east = -180d;
         double west = 180d;
 
         for (GeoPoint point : points) {
+            if (point == null) {
+                continue;
+            }
             north = Math.max(north, point.getLatitude());
             south = Math.min(south, point.getLatitude());
             east = Math.max(east, point.getLongitude());
             west = Math.min(west, point.getLongitude());
         }
+        if (north < south || east < west) {
+            return null;
+        }
+        if (north == south) {
+            north += 0.002d;
+            south -= 0.002d;
+        }
+        if (east == west) {
+            east += 0.002d;
+            west -= 0.002d;
+        }
         return new BoundingBox(north, east, south, west);
     }
 
-    private String formatRouteSummary(OnlineRouteService.RouteResult routeResult) {
-        double distanceKm = routeResult.getDistanceMeters() / 1000d;
-        if (routeResult.isFallback()) {
-            return String.format(Locale.getDefault(), "直線距離: %.1f km", distanceKm);
+    private String formatDistanceValue(double distanceMeters) {
+        if (Double.isNaN(distanceMeters) || distanceMeters < 0d) {
+            return "--";
         }
-        long durationMinutes = Math.round(routeResult.getDurationSeconds() / 60d);
-        if (Double.isNaN(distanceKm) || routeResult.getDistanceMeters() <= 0d) {
-            return "ルート: 取得済み";
+        if (distanceMeters >= 1000d) {
+            return String.format(Locale.getDefault(), "%.1f km", distanceMeters / 1000d);
         }
-        return String.format(Locale.getDefault(), "ルート: %.1f km / 約%d分", distanceKm, durationMinutes);
+        return String.format(Locale.getDefault(), "%.0f m", distanceMeters);
     }
 
     private void hideKeyboard() {
@@ -502,6 +539,10 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         if (mapView != null && centeringEnabled) {
             centerMapOnCurrentLocation();
+        }
+
+        if (destinationLocation != null) {
+            updateStraightLineToDestination(false);
         }
 
         updateSensorInfoDisplay();

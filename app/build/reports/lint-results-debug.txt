@@ -1,43 +1,9 @@
-/root/sensor/app/src/main/AndroidManifest.xml:6: Warning: WRITE_EXTERNAL_STORAGE is deprecated (and is not granted) when targeting Android 13+. If you need to write to shared storage, use the MediaStore.createWriteRequest intent. [ScopedStorage]
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-   Explanation for issues of type "ScopedStorage":
-   Scoped storage is enforced on Android 10+ (or Android 11+ if using
-   requestLegacyExternalStorage). In particular, WRITE_EXTERNAL_STORAGE will
-   no longer provide write access to all files; it will provide the equivalent
-   of READ_EXTERNAL_STORAGE instead.
-
-   As of Android 13, if you need to query or interact with MediaStore or media
-   files on the shared storage, you should be using instead one or more new
-   storage permissions:
-   * android.permission.READ_MEDIA_IMAGES
-   * android.permission.READ_MEDIA_VIDEO
-   * android.permission.READ_MEDIA_AUDIO
-
-   and then add maxSdkVersion="33" to the older permission. See the developer
-   guide for how to do this:
-   https://developer.android.com/about/versions/13/behavior-changes-13#granula
-   r-media-permissions
-
-   The MANAGE_EXTERNAL_STORAGE permission can be used to manage all files, but
-   it is rarely necessary and most apps on Google Play are not allowed to use
-   it. Most apps should instead migrate to use scoped storage. To modify or
-   delete files, apps should request write access from the user as described
-   at https://goo.gle/android-mediastore-createwriterequest.
-
-   To learn more, read these resources: Play policy:
-   https://goo.gle/policy-storage-help Allowable use cases:
-   https://goo.gle/policy-storage-usecases
-
-   https://goo.gle/android-storage-usecases
-
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:117: Warning: Calling Canvas.getWidth() is usually wrong; you should be calling getWidth() instead [CanvasSize]
-        int width = canvas.getWidth();
-                    ~~~~~~~~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:118: Warning: Calling Canvas.getHeight() is usually wrong; you should be calling getHeight() instead [CanvasSize]
-        int height = canvas.getHeight();
-                     ~~~~~~~~~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:192: Warning: Calling Canvas.getWidth() is usually wrong; you should be calling getWidth() instead [CanvasSize]
+        float width = canvas.getWidth();
+                      ~~~~~~~~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:193: Warning: Calling Canvas.getHeight() is usually wrong; you should be calling getHeight() instead [CanvasSize]
+        float height = canvas.getHeight();
+                       ~~~~~~~~~~~~~~~~~~
 
    Explanation for issues of type "CanvasSize":
    In a custom view's draw implementation, you should normally call getWidth
@@ -92,15 +58,12 @@
 /root/sensor/app/src/main/java/com/example/sensor/CompassView.java:56: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
         Path path = new Path();
                     ~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:126: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
-        RectF panelRect = new RectF(0, panelTop, width, height);
-                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:137: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
-        toggleButtonRect = new RectF(width - 60, panelTop + 8, width - 12, panelTop + 40);
-                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:148: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
-        RectF returnButtonRect = new RectF(width - 160, panelTop + 8, width - 68, panelTop + 40);
-                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:268: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
+            drawCenteredLines(canvas, new String[]{"コンパス", getCompassAzimuthText()}, compassCenterX, labelTop, labelPaint);
+                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:271: Warning: Avoid object allocations during draw/layout operations (preallocate and reuse instead) [DrawAllocation]
+                    new String[]{
+                    ^
 
    Explanation for issues of type "DrawAllocation":
    You should avoid allocating objects during a drawing or layout operation.
@@ -113,7 +76,7 @@
    Some methods allocate memory on your behalf (such as Bitmap.create), and
    these should be handled in the same way.
 
-/root/sensor/app/src/main/AndroidManifest.xml:8: Warning: Should explicitly set android:icon, there is no default [MissingApplicationIcon]
+/root/sensor/app/src/main/AndroidManifest.xml:6: Warning: Should explicitly set android:icon, there is no default [MissingApplicationIcon]
     <application
      ~~~~~~~~~~~
 
@@ -124,15 +87,4 @@
 
    https://developer.android.com/studio/publish/preparing#publishing-configure
 
-/root/sensor/app/src/main/java/com/example/sensor/SensorInfoOverlay.java:265: Warning: Custom view SensorInfoOverlay overrides onTouchEvent but not performClick [ClickableViewAccessibility]
-    public boolean onTouchEvent(MotionEvent event) {
-                   ~~~~~~~~~~~~
-
-   Explanation for issues of type "ClickableViewAccessibility":
-   If a View that overrides onTouchEvent or uses an OnTouchListener does not
-   also implement performClick and call it when clicks are detected, the View
-   may not handle accessibility actions properly. Logic handling the click
-   actions should ideally be placed in View#performClick as some accessibility
-   services invoke performClick when a click action should occur.
-
-0 errors, 11 warnings
+0 errors, 8 warnings

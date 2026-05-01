@@ -1,9 +1,9 @@
 <libraries>
   <library
-      name="org.osmdroid:osmdroid-android:6.1.10@aar"
-      jars="/root/.gradle/caches/8.12/transforms/adef06cae5ce69ff73917355e4a35376/transformed/jetified-osmdroid-android-6.1.10/jars/classes.jar"
-      resolved="org.osmdroid:osmdroid-android:6.1.10"
-      folder="/root/.gradle/caches/8.12/transforms/adef06cae5ce69ff73917355e4a35376/transformed/jetified-osmdroid-android-6.1.10"
+      name="org.osmdroid:osmdroid-android:6.1.16@aar"
+      jars="/root/.gradle/caches/8.12/transforms/abd42a88ffee7031b5e315bbd82722d0/transformed/jetified-osmdroid-android-6.1.16/jars/classes.jar"
+      resolved="org.osmdroid:osmdroid-android:6.1.16"
+      folder="/root/.gradle/caches/8.12/transforms/abd42a88ffee7031b5e315bbd82722d0/transformed/jetified-osmdroid-android-6.1.16"
       manifest="AndroidManifest.xml"
       resFolder="res"
       assetsFolder="assets"

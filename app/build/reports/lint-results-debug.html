@@ -177,22 +177,20 @@ document.getElementById(id).style.display = 'none';
 <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
   <header class="mdl-layout__header">
     <div class="mdl-layout__header-row">
-      <span class="mdl-layout-title">Lint Report: 11 warnings</span>
+      <span class="mdl-layout-title">Lint Report: 8 warnings</span>
       <div class="mdl-layout-spacer"></div>
-      <nav class="mdl-navigation mdl-layout--large-screen-only">Check performed at Sat Apr 25 11:12:32 UTC 2026 by AGP (8.2.2)</nav>
+      <nav class="mdl-navigation mdl-layout--large-screen-only">Check performed at Fri May 01 02:44:57 UTC 2026 by AGP (8.2.2)</nav>
     </div>
   </header>
   <div class="mdl-layout__drawer">
     <span class="mdl-layout-title">Issue Types</span>
     <nav class="mdl-navigation">
       <a class="mdl-navigation__link" href="#overview"><i class="material-icons">dashboard</i>Overview</a>
-      <a class="mdl-navigation__link" href="#ScopedStorage"><i class="material-icons warning-icon">warning</i>Affected by scoped storage (1)</a>
       <a class="mdl-navigation__link" href="#CanvasSize"><i class="material-icons warning-icon">warning</i>Wrong Canvas Size (2)</a>
       <a class="mdl-navigation__link" href="#OldTargetApi"><i class="material-icons warning-icon">warning</i>Target SDK attribute is not targeting latest version (1)</a>
       <a class="mdl-navigation__link" href="#GradleDependency"><i class="material-icons warning-icon">warning</i>Obsolete Gradle Dependency (1)</a>
-      <a class="mdl-navigation__link" href="#DrawAllocation"><i class="material-icons warning-icon">warning</i>Memory allocations within drawing code (4)</a>
+      <a class="mdl-navigation__link" href="#DrawAllocation"><i class="material-icons warning-icon">warning</i>Memory allocations within drawing code (3)</a>
       <a class="mdl-navigation__link" href="#MissingApplicationIcon"><i class="material-icons warning-icon">warning</i>Missing application icon (1)</a>
-      <a class="mdl-navigation__link" href="#ClickableViewAccessibility"><i class="material-icons warning-icon">warning</i>Accessibility in Custom Views (1)</a>
     </nav>
   </div>
   <main class="mdl-layout__content">
@@ -208,9 +206,6 @@ document.getElementById(id).style.display = 'none';
 <tr><td class="countColumn"></td><td class="categoryColumn"><a href="#Correctness">Correctness</a>
 </td></tr>
 <tr>
-<td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
-<a href="#ScopedStorage">ScopedStorage</a>: Affected by scoped storage</td></tr>
-<tr>
 <td class="countColumn">2</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
 <a href="#CanvasSize">CanvasSize</a>: Wrong Canvas Size</td></tr>
 <tr>
@@ -222,18 +217,13 @@ document.getElementById(id).style.display = 'none';
 <tr><td class="countColumn"></td><td class="categoryColumn"><a href="#Performance">Performance</a>
 </td></tr>
 <tr>
-<td class="countColumn">4</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
+<td class="countColumn">3</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
 <a href="#DrawAllocation">DrawAllocation</a>: Memory allocations within drawing code</td></tr>
 <tr><td class="countColumn"></td><td class="categoryColumn"><a href="#Usability:Icons">Usability:Icons</a>
 </td></tr>
 <tr>
 <td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
 <a href="#MissingApplicationIcon">MissingApplicationIcon</a>: Missing application icon</td></tr>
-<tr><td class="countColumn"></td><td class="categoryColumn"><a href="#Accessibility">Accessibility</a>
-</td></tr>
-<tr>
-<td class="countColumn">1</td><td class="issueColumn"><i class="material-icons warning-icon">warning</i>
-<a href="#ClickableViewAccessibility">ClickableViewAccessibility</a>: Accessibility in Custom Views</td></tr>
 <tr><td></td><td class="categoryColumn"><a href="#ExtraIssues">Included Additional Checks (6)</a>
 </td></tr>
 <tr><td></td><td class="categoryColumn"><a href="#MissingIssues">Disabled Checks (39)</a>
@@ -246,63 +236,7 @@ Dismiss</button>            </div>
             </div>
           </section>
 <a name="Correctness"></a>
-<a name="ScopedStorage"></a>
-<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp" id="ScopedStorageCard" style="display: block;">
-            <div class="mdl-card mdl-cell mdl-cell--12-col">
-  <div class="mdl-card__title">
-    <h2 class="mdl-card__title-text">Affected by scoped storage</h2>
-  </div>
-              <div class="mdl-card__supporting-text">
-<div class="issue">
-<div class="warningslist">
-<span class="location"><a href="../../src/main/AndroidManifest.xml">../../src/main/AndroidManifest.xml</a>:6</span>: <span class="message">WRITE_EXTERNAL_STORAGE is deprecated (and is not granted) when targeting Android 13+. If you need to write to shared storage, use the <code>MediaStore.createWriteRequest</code> intent.</span><br /><pre class="errorlines">
-<span class="lineno">  3 </span>    <span class="tag">&lt;uses-permission</span><span class="attribute"> </span><span class="prefix">android:</span><span class="attribute">name</span>=<span class="value">"android.permission.ACCESS_COARSE_LOCATION"</span> />
-<span class="lineno">  4 </span>    <span class="tag">&lt;uses-permission</span><span class="attribute"> </span><span class="prefix">android:</span><span class="attribute">name</span>=<span class="value">"android.permission.ACCESS_FINE_LOCATION"</span> />
-<span class="lineno">  5 </span>    <span class="tag">&lt;uses-permission</span><span class="attribute"> </span><span class="prefix">android:</span><span class="attribute">name</span>=<span class="value">"android.permission.INTERNET"</span> />
-<span class="caretline"><span class="lineno">  6 </span>    <span class="tag">&lt;uses-permission</span><span class="attribute"> </span><span class="prefix">android:</span><span class="attribute">name</span>=<span class="value">"</span><span class="warning"><span class="value">android.permission.WRITE_EXTERNAL_STORAGE</span></span><span class="value">"</span> />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno">  7 </span>
-<span class="lineno">  8 </span>    <span class="tag">&lt;application</span><span class="attribute">
-</span><span class="lineno">  9 </span><span class="attribute">        </span><span class="prefix">android:</span><span class="attribute">label</span>=<span class="value">"sensor"</span></pre>
-
-</div>
-<div class="metadata"><div class="explanation" id="explanationScopedStorage" style="display: none;">
-Scoped storage is enforced on Android 10+ (or Android 11+ if using <code>requestLegacyExternalStorage</code>). In particular, <code>WRITE_EXTERNAL_STORAGE</code> will no longer provide write access to all files; it will provide the equivalent of <code>READ_EXTERNAL_STORAGE</code> instead.<br/>
-<br/>
-As of Android 13, if you need to query or interact with MediaStore or media files on the shared storage, you should be using instead one or more new storage permissions:<br/>
-* <code>android.permission.READ_MEDIA_IMAGES</code><br/>
-* <code>android.permission.READ_MEDIA_VIDEO</code><br/>
-* <code>android.permission.READ_MEDIA_AUDIO</code><br/>
-<br/>
-and then add <code>maxSdkVersion="33"</code> to the older permission. See the developer guide for how to do this: <a href="https://developer.android.com/about/versions/13/behavior-changes-13#granular-media-permissions">https://developer.android.com/about/versions/13/behavior-changes-13#granular-media-permissions</a><br/>
-<br/>
-The <code>MANAGE_EXTERNAL_STORAGE</code> permission can be used to manage all files, but it is rarely necessary and most apps on Google Play are not allowed to use it. Most apps should instead migrate to use scoped storage. To modify or delete files, apps should request write access from the user as described at <a href="https://goo.gle/android-mediastore-createwriterequest">https://goo.gle/android-mediastore-createwriterequest</a>.<br/>
-<br/>
-To learn more, read these resources: Play policy: <a href="https://goo.gle/policy-storage-help">https://goo.gle/policy-storage-help</a> Allowable use cases: <a href="https://goo.gle/policy-storage-usecases">https://goo.gle/policy-storage-usecases</a><br/><div class="moreinfo">More info: <a href="https://goo.gle/android-storage-usecases">https://goo.gle/android-storage-usecases</a>
-</div>To suppress this error, use the issue id "ScopedStorage" as explained in the <a href="#SuppressInfo">Suppressing Warnings and Errors</a> section.<br/>
-<br/></div>
-</div>
-</div>
-<div class="chips">
-<span class="mdl-chip">
-    <span class="mdl-chip__text">ScopedStorage</span>
-</span>
-<span class="mdl-chip">
-    <span class="mdl-chip__text">Correctness</span>
-</span>
-<span class="mdl-chip">
-    <span class="mdl-chip__text">Warning</span>
-</span>
-<span class="mdl-chip">
-    <span class="mdl-chip__text">Priority 8/10</span>
-</span>
-</div>
-              </div>
-              <div class="mdl-card__actions mdl-card--border">
-<button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="explanationScopedStorageLink" onclick="reveal('explanationScopedStorage');">
-Explain</button><button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="ScopedStorageCardLink" onclick="hideid('ScopedStorageCard');">
-Dismiss</button>            </div>
-            </div>
-          </section><a name="CanvasSize"></a>
+<a name="CanvasSize"></a>
 <section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp" id="CanvasSizeCard" style="display: block;">
             <div class="mdl-card mdl-cell mdl-cell--12-col">
   <div class="mdl-card__title">
@@ -311,23 +245,24 @@ Dismiss</button>            </div>
               <div class="mdl-card__supporting-text">
 <div class="issue">
 <div class="warningslist">
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:117</span>: <span class="message">Calling <code>Canvas.getWidth()</code> is usually wrong; you should be calling <code>getWidth()</code> instead</span><br /><pre class="errorlines">
-<span class="lineno"> 114 </span>            <span class="keyword">return</span>;
-<span class="lineno"> 115 </span>        }
-<span class="lineno"> 116 </span>
-<span class="caretline"><span class="lineno"> 117 </span>        <span class="keyword">int</span> width = <span class="warning">canvas.getWidth()</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 118 </span>        <span class="keyword">int</span> height = canvas.getHeight();
-<span class="lineno"> 119 </span>        screenWidth = width;
-<span class="lineno"> 120 </span>        screenHeight = height;
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:192</span>: <span class="message">Calling <code>Canvas.getWidth()</code> is usually wrong; you should be calling <code>getWidth()</code> instead</span><br /><pre class="errorlines">
+<span class="lineno"> 189 </span>    <span class="keyword">protected</span> <span class="keyword">void</span> onDraw(Canvas canvas) {
+<span class="lineno"> 190 </span>        <span class="keyword">super</span>.onDraw(canvas);
+<span class="lineno"> 191 </span>
+<span class="caretline"><span class="lineno"> 192 </span>        <span class="keyword">float</span> width = <span class="warning">canvas.getWidth()</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno"> 193 </span>        <span class="keyword">float</span> height = canvas.getHeight();
+<span class="lineno"> 194 </span>        <span class="keyword">float</span> outerPadding = dp(<span class="number">16</span>);
+<span class="lineno"> 195 </span>        <span class="keyword">float</span> panelPadding = dp(<span class="number">18</span>);
 </pre>
 
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:118</span>: <span class="message">Calling <code>Canvas.getHeight()</code> is usually wrong; you should be calling <code>getHeight()</code> instead</span><br /><pre class="errorlines">
-<span class="lineno"> 115 </span>        }
-<span class="lineno"> 116 </span>
-<span class="lineno"> 117 </span>        <span class="keyword">int</span> width = canvas.getWidth();
-<span class="caretline"><span class="lineno"> 118 </span>        <span class="keyword">int</span> height = <span class="warning">canvas.getHeight()</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 119 </span>        screenWidth = width;
-<span class="lineno"> 120 </span>        screenHeight = height;
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:193</span>: <span class="message">Calling <code>Canvas.getHeight()</code> is usually wrong; you should be calling <code>getHeight()</code> instead</span><br /><pre class="errorlines">
+<span class="lineno"> 190 </span>        <span class="keyword">super</span>.onDraw(canvas);
+<span class="lineno"> 191 </span>
+<span class="lineno"> 192 </span>        <span class="keyword">float</span> width = canvas.getWidth();
+<span class="caretline"><span class="lineno"> 193 </span>        <span class="keyword">float</span> height = <span class="warning">canvas.getHeight()</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno"> 194 </span>        <span class="keyword">float</span> outerPadding = dp(<span class="number">16</span>);
+<span class="lineno"> 195 </span>        <span class="keyword">float</span> panelPadding = dp(<span class="number">18</span>);
+<span class="lineno"> 196 </span>        <span class="keyword">float</span> sectionSpacing = dp(<span class="number">14</span>);
 </pre>
 
 </div>
@@ -426,7 +361,7 @@ Dismiss</button>            </div>
 <span class="location"><a href="../../build.gradle">../../build.gradle</a>:26</span>: <span class="message">A newer version of androidx.core:core than 1.13.1 is available: 1.18.0</span><br /><pre class="errorlines">
 <span class="lineno"> 23 </span>
 <span class="lineno"> 24 </span>dependencies {
-<span class="lineno"> 25 </span>    implementation <span class="string">'org.osmdroid:osmdroid-android:6.1.10'</span>
+<span class="lineno"> 25 </span>    implementation <span class="string">'org.osmdroid:osmdroid-android:6.1.16'</span>
 <span class="caretline"><span class="lineno"> 26 </span>    implementation <span class="warning"><span class="string">'androidx.core:core:1.13.1'</span></span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
 <span class="lineno"> 27 </span>}
 </pre>
@@ -479,32 +414,24 @@ Dismiss</button>            </div>
 <span class="lineno"> 59 </span>        path.lineTo(cx + r * <span class="number">0.15f</span>, cy + r * <span class="number">0.5f</span>);
 </pre>
 
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:126</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
-<span class="lineno"> 123 </span>        <span class="keyword">float</span> panelTop = height - panelHeight;
-<span class="lineno"> 124 </span>
-<span class="lineno"> 125 </span>        <span class="comment">// Draw background</span>
-<span class="caretline"><span class="lineno"> 126 </span>        RectF panelRect = <span class="warning"><span class="keyword">new</span> RectF(<span class="number">0</span>, panelTop, width, height)</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 127 </span>        canvas.drawRect(panelRect, backgroundPaint);
-<span class="lineno"> 128 </span>
-<span class="lineno"> 129 </span>        <span class="keyword">int</span> padding = <span class="number">16</span>;
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:268</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
+<span class="lineno"> 265 </span>  drawGyroVisual(canvas, gyroCenterX, visualCenterY, visualSize);
+<span class="lineno"> 266 </span>
+<span class="lineno"> 267 </span>  <span class="keyword">float</span> labelTop = visualTop + visualSize + dp(<span class="number">8</span>);
+<span class="caretline"><span class="lineno"> 268 </span>  drawCenteredLines(canvas, <span class="warning"><span class="keyword">new</span> String[]{<span class="string">"コンパス"</span>, getCompassAzimuthText()}</span>, compassCenterX, labelTop, labelPaint);</span>
+<span class="lineno"> 269 </span>  drawCenteredLines(
+<span class="lineno"> 270 </span>          canvas,
+<span class="lineno"> 271 </span>          <span class="keyword">new</span> String[]{
 </pre>
 
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:137</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
-<span class="lineno"> 134 </span>  canvas.drawText(<span class="string">"センサー情報"</span>, padding, yPos, titlePaint);
-<span class="lineno"> 135 </span>  
-<span class="lineno"> 136 </span>  <span class="comment">// Draw toggle button (X to hide)</span>
-<span class="caretline"><span class="lineno"> 137 </span>  toggleButtonRect = <span class="warning"><span class="keyword">new</span> RectF(width - <span class="number">60</span>, panelTop + <span class="number">8</span>, width - <span class="number">12</span>, panelTop + <span class="number">40</span>)</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 138 </span>  canvas.drawRect(toggleButtonRect, buttonPaint);
-<span class="lineno"> 139 </span>  canvas.drawText(<span class="string">"Hide"</span>, toggleButtonRect.left + <span class="number">8</span>, toggleButtonRect.centerY() + <span class="number">5</span>, buttonTextPaint);
-</pre>
-
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:148</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
-<span class="lineno"> 145 </span>      canvas.drawText(sensorInfoLines.get(<span class="number">0</span>), padding, yPos, textPaint);
-<span class="lineno"> 146 </span>  }
-<span class="lineno"> 147 </span>  
-<span class="caretline"><span class="lineno"> 148 </span>  RectF returnButtonRect = <span class="warning"><span class="keyword">new</span> RectF(width - <span class="number">160</span>, panelTop + <span class="number">8</span>, width - <span class="number">68</span>, panelTop + <span class="number">40</span>)</span>;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 149 </span>  canvas.drawRect(returnButtonRect, buttonPaint);
-<span class="lineno"> 150 </span>  canvas.drawText(<span class="string">"▶ Location"</span>, returnButtonRect.left + <span class="number">6</span>, returnButtonRect.centerY() + <span class="number">5</span>, buttonTextPaint);
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:271</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
+<span class="lineno"> 268 </span>  drawCenteredLines(canvas, <span class="keyword">new</span> String[]{<span class="string">"コンパス"</span>, getCompassAzimuthText()}, compassCenterX, labelTop, labelPaint);
+<span class="lineno"> 269 </span>  drawCenteredLines(
+<span class="lineno"> 270 </span>          canvas,
+<span class="caretline"><span class="lineno"> 271 </span>          <span class="warning"><span class="keyword">new</span> String[]{</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno"> 272 </span>                  <span class="string">"ジャイロ"</span>,
+<span class="lineno"> 273 </span>                  String.format(Locale.getDefault(), <span class="string">"X: %.2f  Y: %.2f"</span>, gyroValues[<span class="number">0</span>], gyroValues[<span class="number">1</span>]),
+<span class="lineno"> 274 </span>                  String.format(Locale.getDefault(), <span class="string">"Z: %.2f rad/s"</span>, gyroValues[<span class="number">2</span>])
 </pre>
 
 </div>
@@ -548,13 +475,13 @@ Dismiss</button>            </div>
               <div class="mdl-card__supporting-text">
 <div class="issue">
 <div class="warningslist">
-<span class="location"><a href="../../src/main/AndroidManifest.xml">../../src/main/AndroidManifest.xml</a>:8</span>: <span class="message">Should explicitly set <code>android:icon</code>, there is no default</span><br /><pre class="errorlines">
+<span class="location"><a href="../../src/main/AndroidManifest.xml">../../src/main/AndroidManifest.xml</a>:6</span>: <span class="message">Should explicitly set <code>android:icon</code>, there is no default</span><br /><pre class="errorlines">
+<span class="lineno">  3 </span>    <span class="tag">&lt;uses-permission</span><span class="attribute"> </span><span class="prefix">android:</span><span class="attribute">name</span>=<span class="value">"android.permission.ACCESS_COARSE_LOCATION"</span> />
+<span class="lineno">  4 </span>    <span class="tag">&lt;uses-permission</span><span class="attribute"> </span><span class="prefix">android:</span><span class="attribute">name</span>=<span class="value">"android.permission.ACCESS_FINE_LOCATION"</span> />
 <span class="lineno">  5 </span>    <span class="tag">&lt;uses-permission</span><span class="attribute"> </span><span class="prefix">android:</span><span class="attribute">name</span>=<span class="value">"android.permission.INTERNET"</span> />
-<span class="lineno">  6 </span>    <span class="tag">&lt;uses-permission</span><span class="attribute"> </span><span class="prefix">android:</span><span class="attribute">name</span>=<span class="value">"android.permission.WRITE_EXTERNAL_STORAGE"</span> />
-<span class="lineno">  7 </span>
-<span class="caretline"><span class="lineno">  8 </span>    <span class="tag">&lt;</span><span class="warning"><span class="tag">application</span></span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="attribute">
-</span><span class="lineno">  9 </span><span class="attribute">        </span><span class="prefix">android:</span><span class="attribute">label</span>=<span class="value">"sensor"</span>
-<span class="lineno"> 10 </span>        <span class="prefix">android:</span><span class="attribute">theme</span>=<span class="value">"@android:style/Theme.Material.Light"</span>>
+<span class="caretline"><span class="lineno">  6 </span>    <span class="tag">&lt;</span><span class="warning"><span class="tag">application</span></span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="attribute">
+</span><span class="lineno">  7 </span><span class="attribute">        </span><span class="prefix">android:</span><span class="attribute">label</span>=<span class="value">"sensor"</span>
+<span class="lineno">  8 </span>        <span class="prefix">android:</span><span class="attribute">theme</span>=<span class="value">"@android:style/Theme.Material.Light.NoActionBar"</span>>
 </pre>
 
 </div>
@@ -586,52 +513,6 @@ To suppress this error, use the issue id "MissingApplicationIcon" as explained i
               <div class="mdl-card__actions mdl-card--border">
 <button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="explanationMissingApplicationIconLink" onclick="reveal('explanationMissingApplicationIcon');">
 Explain</button><button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="MissingApplicationIconCardLink" onclick="hideid('MissingApplicationIconCard');">
-Dismiss</button>            </div>
-            </div>
-          </section>
-<a name="Accessibility"></a>
-<a name="ClickableViewAccessibility"></a>
-<section class="section--center mdl-grid mdl-grid--no-spacing mdl-shadow--2dp" id="ClickableViewAccessibilityCard" style="display: block;">
-            <div class="mdl-card mdl-cell mdl-cell--12-col">
-  <div class="mdl-card__title">
-    <h2 class="mdl-card__title-text">Accessibility in Custom Views</h2>
-  </div>
-              <div class="mdl-card__supporting-text">
-<div class="issue">
-<div class="warningslist">
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:265</span>: <span class="message">Custom view <code>SensorInfoOverlay</code> overrides <code>onTouchEvent</code> but not <code>performClick</code></span><br /><pre class="errorlines">
-<span class="lineno"> 262 </span>    }
-<span class="lineno"> 263 </span>
-<span class="lineno"> 264 </span>    <span class="annotation">@Override</span>
-<span class="caretline"><span class="lineno"> 265 </span>    <span class="keyword">public</span> <span class="keyword">boolean</span> <span class="warning">onTouchEvent</span>(MotionEvent event) {&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 266 </span>        <span class="keyword">switch</span> (event.getAction()) {
-<span class="lineno"> 267 </span>            <span class="keyword">case</span> MotionEvent.ACTION_DOWN:
-<span class="lineno"> 268 </span>                <span class="comment">// Check if toggle button was pressed</span></pre>
-
-</div>
-<div class="metadata"><div class="explanation" id="explanationClickableViewAccessibility" style="display: none;">
-If a <code>View</code> that overrides <code>onTouchEvent</code> or uses an <code>OnTouchListener</code> does not also implement <code>performClick</code> and call it when clicks are detected, the <code>View</code> may not handle accessibility actions properly. Logic handling the click actions should ideally be placed in <code>View#performClick</code> as some accessibility services invoke <code>performClick</code> when a click action should occur.<br/>To suppress this error, use the issue id "ClickableViewAccessibility" as explained in the <a href="#SuppressInfo">Suppressing Warnings and Errors</a> section.<br/>
-<br/></div>
-</div>
-</div>
-<div class="chips">
-<span class="mdl-chip">
-    <span class="mdl-chip__text">ClickableViewAccessibility</span>
-</span>
-<span class="mdl-chip">
-    <span class="mdl-chip__text">Accessibility</span>
-</span>
-<span class="mdl-chip">
-    <span class="mdl-chip__text">Warning</span>
-</span>
-<span class="mdl-chip">
-    <span class="mdl-chip__text">Priority 6/10</span>
-</span>
-</div>
-              </div>
-              <div class="mdl-card__actions mdl-card--border">
-<button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="explanationClickableViewAccessibilityLink" onclick="reveal('explanationClickableViewAccessibility');">
-Explain</button><button class="mdl-button mdl-js-button mdl-js-ripple-effect" id="ClickableViewAccessibilityCardLink" onclick="hideid('ClickableViewAccessibilityCard');">
 Dismiss</button>            </div>
             </div>
           </section>

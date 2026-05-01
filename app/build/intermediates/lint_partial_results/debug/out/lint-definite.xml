@@ -25,17 +25,17 @@
             replacement="">
             <range
                 file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-                startOffset="3666"
-                endOffset="3683"/>
+                startOffset="7121"
+                endOffset="7138"/>
         </fix-replace>
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="117"
-            column="21"
-            startOffset="3666"
-            endLine="117"
-            endColumn="38"
-            endOffset="3683"/>
+            line="192"
+            column="23"
+            startOffset="7121"
+            endLine="192"
+            endColumn="40"
+            endOffset="7138"/>
     </incident>
 
     <incident
@@ -48,31 +48,17 @@
             replacement="">
             <range
                 file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-                startOffset="3706"
-                endOffset="3724"/>
+                startOffset="7163"
+                endOffset="7181"/>
         </fix-replace>
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="118"
-            column="22"
-            startOffset="3706"
-            endLine="118"
-            endColumn="40"
-            endOffset="3724"/>
-    </incident>
-
-    <incident
-        id="ClickableViewAccessibility"
-        severity="warning"
-        message="Custom view `SensorInfoOverlay` overrides `onTouchEvent` but not `performClick`">
-        <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="265"
-            column="20"
-            startOffset="9756"
-            endLine="265"
-            endColumn="32"
-            endOffset="9768"/>
+            line="193"
+            column="24"
+            startOffset="7163"
+            endLine="193"
+            endColumn="42"
+            endOffset="7181"/>
     </incident>
 
     <incident
@@ -81,12 +67,12 @@
         message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="126"
-            column="27"
-            startOffset="3945"
-            endLine="126"
-            endColumn="64"
-            endOffset="3982"/>
+            line="268"
+            column="39"
+            startOffset="10628"
+            endLine="268"
+            endColumn="84"
+            endOffset="10673"/>
     </incident>
 
     <incident
@@ -95,26 +81,12 @@
         message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="137"
-            column="28"
-            startOffset="4315"
-            endLine="137"
-            endColumn="90"
-            endOffset="4377"/>
-    </incident>
-
-    <incident
-        id="DrawAllocation"
-        severity="warning"
-        message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
-        <location
-            file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="148"
-            column="34"
-            startOffset="4803"
-            endLine="148"
-            endColumn="97"
-            endOffset="4866"/>
+            line="271"
+            column="21"
+            startOffset="10793"
+            endLine="275"
+            endColumn="22"
+            endOffset="11073"/>
     </incident>
 
     <incident
