@@ -48,7 +48,7 @@ import java.util.Locale;
 public class MainActivity extends Activity implements SensorEventListener {
 
     private static final int REQUEST_LOCATION_PERMISSION = 1001;
-    private static final int SEARCH_RESULT_LIMIT = 5;
+    private static final int SEARCH_RESULT_LIMIT = 20;
     private static final float MAX_COMPASS_TILT_DEGREES = 70f;
     private static final float AZIMUTH_SMOOTHING_FACTOR = 0.18f;
     private static final GeoPoint DEFAULT_START_POINT = new GeoPoint(35.6762, 139.6503);
@@ -69,8 +69,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     private EditText addressInput;
     private LinearLayout searchResultsContainer;
     private ScrollView searchResultsScrollView;
-    private Button trackingButton;
-    private Button centeringButton;
     private final float[] accelerometerValues = new float[3];
     private final float[] magneticValues = new float[3];
     private final float[] gyroValues = new float[3];
@@ -135,6 +133,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         sensorInfoOverlay = new SensorInfoOverlay(this);
         sensorInfoOverlay.setOnReturnToLocationClicked(this::recenterOnCurrentLocation);
+        sensorInfoOverlay.setOnTrackingCenteringToggleClicked(this::toggleTrackingAndCentering);
         sensorInfoOverlay.setOnPanelVisibilityChanged(() -> {
             if (centeringEnabled && lastGpsLocation != null) {
                 centerMapOnCurrentLocation();
@@ -148,8 +147,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         root.addView(sensorInfoOverlay);
 
         setContentView(root);
-        updateTrackingButton();
-        updateCenteringButton();
+        updateTrackingCenteringToggle();
     }
 
     private void configureOsmdroid() {
@@ -257,22 +255,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         inputRow.addView(searchButton);
         container.addView(inputRow);
 
-        LinearLayout controlRow = new LinearLayout(this);
-        controlRow.setOrientation(LinearLayout.HORIZONTAL);
-        LinearLayout.LayoutParams controlRowParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        controlRowParams.topMargin = dp(8);
-        controlRow.setLayoutParams(controlRowParams);
-        controlRow.setGravity(Gravity.END);
-
-        trackingButton = createCompactToggleButton("追跡", view -> toggleTracking());
-        centeringButton = createCompactToggleButton("中心", view -> toggleCentering());
-        controlRow.addView(trackingButton);
-        controlRow.addView(centeringButton);
-        container.addView(controlRow);
-
         searchResultsContainer = new LinearLayout(this);
         searchResultsContainer.setOrientation(LinearLayout.VERTICAL);
 
@@ -288,24 +270,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         container.addView(searchResultsScrollView);
 
         return container;
-    }
-
-    private Button createCompactToggleButton(String label, View.OnClickListener listener) {
-        Button button = new Button(this);
-        button.setAllCaps(false);
-        button.setMinWidth(0);
-        button.setMinimumWidth(0);
-        button.setPadding(dp(10), dp(6), dp(10), dp(6));
-        button.setTextSize(12f);
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        params.leftMargin = dp(8);
-        button.setLayoutParams(params);
-        button.setOnClickListener(listener);
-        button.setTag(label);
-        return button;
     }
 
     private void performAddressSearch() {
@@ -411,8 +375,9 @@ public class MainActivity extends Activity implements SensorEventListener {
         ));
         searchMarker.setVisible(true);
 
-        if (centeringEnabled) {
-            setCenteringEnabled(false);
+        if (trackingEnabled || centeringEnabled) {
+            setTrackingAndCenteringEnabled(false);
+            stopGpsUpdates();
         }
 
         if (lastGpsLocation != null) {
@@ -499,6 +464,9 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private String formatRouteSummary(OnlineRouteService.RouteResult routeResult) {
         double distanceKm = routeResult.getDistanceMeters() / 1000d;
+        if (routeResult.isFallback()) {
+            return String.format(Locale.getDefault(), "直線距離: %.1f km", distanceKm);
+        }
         long durationMinutes = Math.round(routeResult.getDurationSeconds() / 60d);
         if (Double.isNaN(distanceKm) || routeResult.getDistanceMeters() <= 0d) {
             return "ルート: 取得済み";
@@ -594,49 +562,30 @@ public class MainActivity extends Activity implements SensorEventListener {
         });
     }
 
-    private void toggleTracking() {
-        if (trackingEnabled) {
-            setTrackingEnabled(false);
+    private void toggleTrackingAndCentering() {
+        boolean nextEnabled = !trackingEnabled || !centeringEnabled;
+        setTrackingAndCenteringEnabled(nextEnabled);
+        if (!nextEnabled) {
             stopGpsUpdates();
             return;
         }
 
-        setTrackingEnabled(true);
         startGpsAcquisitionFlow();
-    }
-
-    private void toggleCentering() {
-        setCenteringEnabled(!centeringEnabled);
         if (centeringEnabled && lastGpsLocation != null) {
             centerMapOnCurrentLocation();
         }
     }
 
-    private void setTrackingEnabled(boolean enabled) {
+    private void setTrackingAndCenteringEnabled(boolean enabled) {
         trackingEnabled = enabled;
-        updateTrackingButton();
-    }
-
-    private void setCenteringEnabled(boolean enabled) {
         centeringEnabled = enabled;
-        updateCenteringButton();
+        updateTrackingCenteringToggle();
     }
 
-    private void updateTrackingButton() {
-        updateToggleButtonAppearance(trackingButton, "追跡", trackingEnabled);
-    }
-
-    private void updateCenteringButton() {
-        updateToggleButtonAppearance(centeringButton, "中心", centeringEnabled);
-    }
-
-    private void updateToggleButtonAppearance(Button button, String label, boolean enabled) {
-        if (button == null) {
-            return;
+    private void updateTrackingCenteringToggle() {
+        if (sensorInfoOverlay != null) {
+            sensorInfoOverlay.setTrackingCenteringEnabled(trackingEnabled && centeringEnabled);
         }
-        button.setText(label + (enabled ? " ON" : " OFF"));
-        button.setTextColor(enabled ? Color.parseColor("#4FC3F7") : Color.parseColor("#B0BEC5"));
-        button.setBackgroundColor(enabled ? Color.parseColor("#22263540") : Color.parseColor("#221E1E1E"));
     }
 
     private void startGpsAcquisitionFlow() {
@@ -678,7 +627,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                 updateGpsDisplay(lastKnownGps, true);
             }
         } catch (SecurityException e) {
-            setTrackingEnabled(false);
+            setTrackingAndCenteringEnabled(false);
             showToast("位置情報にアクセスできません");
         }
     }
@@ -797,9 +746,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
 
         float azimuth = (float) Math.toDegrees(orientationAngles[0]);
-        if (azimuth < 0f) {
-            azimuth += 360f;
-        }
+        azimuth = normalizeAzimuth(360f - azimuth);
 
         smoothedAzimuth = smoothAzimuth(smoothedAzimuth, azimuth);
         if (sensorInfoOverlay != null) {
@@ -846,6 +793,14 @@ public class MainActivity extends Activity implements SensorEventListener {
             smoothed -= 360f;
         }
         return smoothed;
+    }
+
+    private float normalizeAzimuth(float azimuth) {
+        float normalized = azimuth % 360f;
+        if (normalized < 0f) {
+            normalized += 360f;
+        }
+        return normalized;
     }
 
     private void updateSensorInfoDisplay() {
@@ -912,7 +867,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                 subscribeGpsUpdates();
             }
         } else {
-            setTrackingEnabled(false);
+            setTrackingAndCenteringEnabled(false);
             showToast("位置情報権限が拒否されました");
         }
     }

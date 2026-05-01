@@ -17,6 +17,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OnlineRouteService {
+    private static final String[] ROUTE_ENDPOINTS = {
+            "https://routing.openstreetmap.de/routed-car/route/v1/driving/",
+            "https://router.project-osrm.org/route/v1/driving/"
+    };
 
     private final Context appContext;
 
@@ -29,7 +33,27 @@ public class OnlineRouteService {
             return null;
         }
 
-        String requestUrl = "https://router.project-osrm.org/route/v1/driving/"
+        IOException lastException = null;
+        for (String endpoint : ROUTE_ENDPOINTS) {
+            try {
+                RouteResult routeResult = fetchRouteFromEndpoint(endpoint, start, end);
+                if (routeResult != null) {
+                    return routeResult;
+                }
+                return null;
+            } catch (IOException e) {
+                lastException = e;
+            }
+        }
+
+        if (lastException != null) {
+            return createFallbackRoute(start, end);
+        }
+        return null;
+    }
+
+    private RouteResult fetchRouteFromEndpoint(String routeEndpoint, GeoPoint start, GeoPoint end) throws IOException {
+        String requestUrl = routeEndpoint
                 + formatCoordinate(start)
                 + ";"
                 + formatCoordinate(end)
@@ -63,6 +87,14 @@ public class OnlineRouteService {
     private RouteResult parseRouteResult(String responseBody) throws IOException {
         try {
             JSONObject response = new JSONObject(responseBody);
+            String resultCode = response.optString("code", "Ok");
+            if ("NoRoute".equalsIgnoreCase(resultCode)) {
+                return null;
+            }
+            if (!"Ok".equalsIgnoreCase(resultCode)) {
+                throw new IOException("ルートサービスがエラーを返しました: " + resultCode);
+            }
+
             JSONArray routes = response.optJSONArray("routes");
             if (routes == null || routes.length() == 0) {
                 return null;
@@ -82,7 +114,8 @@ public class OnlineRouteService {
             return new RouteResult(
                     points,
                     route.optDouble("distance", Double.NaN),
-                    route.optDouble("duration", Double.NaN)
+                    route.optDouble("duration", Double.NaN),
+                    false
             );
         } catch (JSONException e) {
             throw new IOException("ルート結果の解析に失敗しました", e);
@@ -104,15 +137,24 @@ public class OnlineRouteService {
         return builder.toString();
     }
 
+    private RouteResult createFallbackRoute(GeoPoint start, GeoPoint end) {
+        List<GeoPoint> points = new ArrayList<>(2);
+        points.add(new GeoPoint(start.getLatitude(), start.getLongitude()));
+        points.add(new GeoPoint(end.getLatitude(), end.getLongitude()));
+        return new RouteResult(points, start.distanceToAsDouble(end), Double.NaN, true);
+    }
+
     public static class RouteResult {
         private final List<GeoPoint> points;
         private final double distanceMeters;
         private final double durationSeconds;
+        private final boolean fallback;
 
-        public RouteResult(List<GeoPoint> points, double distanceMeters, double durationSeconds) {
+        public RouteResult(List<GeoPoint> points, double distanceMeters, double durationSeconds, boolean fallback) {
             this.points = points;
             this.distanceMeters = distanceMeters;
             this.durationSeconds = durationSeconds;
+            this.fallback = fallback;
         }
 
         public List<GeoPoint> getPoints() {
@@ -125,6 +167,10 @@ public class OnlineRouteService {
 
         public double getDurationSeconds() {
             return durationSeconds;
+        }
+
+        public boolean isFallback() {
+            return fallback;
         }
     }
 }

@@ -15,7 +15,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.text.Normalizer;
 
 public class OnlineAddressGeocoder {
 
@@ -26,20 +29,24 @@ public class OnlineAddressGeocoder {
     }
 
     public List<SearchResult> search(String query, int limit) throws IOException {
-        String trimmedQuery = query == null ? "" : query.trim();
-        if (trimmedQuery.isEmpty()) {
+        String normalizedQuery = normalizeQuery(query);
+        if (normalizedQuery.isEmpty()) {
             return new ArrayList<>();
         }
+
+        List<String> searchTokens = splitSearchTokens(normalizedQuery);
+        int requestedLimit = Math.max(1, limit);
+        int fetchLimit = searchTokens.size() > 1 ? Math.max(requestedLimit, requestedLimit * 3) : requestedLimit;
 
         Uri requestUri = new Uri.Builder()
                 .scheme("https")
                 .authority("nominatim.openstreetmap.org")
                 .appendPath("search")
                 .appendQueryParameter("format", "jsonv2")
-                .appendQueryParameter("limit", String.valueOf(Math.max(1, limit)))
+                .appendQueryParameter("limit", String.valueOf(fetchLimit))
                 .appendQueryParameter("countrycodes", "jp")
                 .appendQueryParameter("accept-language", "ja")
-                .appendQueryParameter("q", trimmedQuery)
+                .appendQueryParameter("q", normalizedQuery)
                 .build();
 
         HttpURLConnection connection = null;
@@ -59,7 +66,8 @@ public class OnlineAddressGeocoder {
             }
 
             try (InputStream inputStream = connection.getInputStream()) {
-                return parseSearchResults(readBody(inputStream), trimmedQuery);
+                List<SearchResult> parsedResults = parseSearchResults(readBody(inputStream), normalizedQuery);
+                return filterResultsByAndTokens(parsedResults, searchTokens, requestedLimit);
             }
         } finally {
             if (connection != null) {
@@ -83,6 +91,77 @@ public class OnlineAddressGeocoder {
         } catch (JSONException | NumberFormatException e) {
             throw new IOException("住所検索結果の解析に失敗しました", e);
         }
+    }
+
+    private String normalizeQuery(String query) {
+        if (query == null) {
+            return "";
+        }
+        return query
+                .replace('\u3000', ' ')
+                .trim()
+                .replaceAll("\\s+", " ");
+    }
+
+    private List<String> splitSearchTokens(String query) {
+        List<String> tokens = new ArrayList<>();
+        if (query == null || query.isEmpty()) {
+            return tokens;
+        }
+
+        String[] rawTokens = query.split("[\\s\\u3000]+");
+        for (String rawToken : rawTokens) {
+            String token = normalizeForComparison(rawToken);
+            if (!token.isEmpty()) {
+                tokens.add(token);
+            }
+        }
+        return tokens;
+    }
+
+    private List<SearchResult> filterResultsByAndTokens(
+            List<SearchResult> results,
+            List<String> searchTokens,
+            int limit
+    ) {
+        if (results == null || results.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        LinkedHashMap<String, SearchResult> filteredResults = new LinkedHashMap<>();
+        for (SearchResult result : results) {
+            if (result == null) {
+                continue;
+            }
+
+            String normalizedDisplayName = normalizeForComparison(result.getDisplayName());
+            boolean matchesAllTokens = true;
+            for (String token : searchTokens) {
+                if (!normalizedDisplayName.contains(token)) {
+                    matchesAllTokens = false;
+                    break;
+                }
+            }
+            if (!matchesAllTokens) {
+                continue;
+            }
+
+            String resultKey = normalizedDisplayName
+                    + "@"
+                    + String.format(Locale.US, "%.6f,%.6f", result.getLatitude(), result.getLongitude());
+            filteredResults.put(resultKey, result);
+            if (filteredResults.size() >= limit) {
+                break;
+            }
+        }
+        return new ArrayList<>(filteredResults.values());
+    }
+
+    private String normalizeForComparison(String value) {
+        if (value == null) {
+            return "";
+        }
+        return Normalizer.normalize(value, Normalizer.Form.NFKC).toLowerCase(Locale.ROOT);
     }
 
     private String readBody(InputStream inputStream) throws IOException {
