@@ -25,17 +25,17 @@
             replacement="">
             <range
                 file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-                startOffset="7509"
-                endOffset="7526"/>
+                startOffset="7516"
+                endOffset="7533"/>
         </fix-replace>
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
             line="204"
             column="23"
-            startOffset="7509"
+            startOffset="7516"
             endLine="204"
             endColumn="40"
-            endOffset="7526"/>
+            endOffset="7533"/>
     </incident>
 
     <incident
@@ -48,17 +48,17 @@
             replacement="">
             <range
                 file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-                startOffset="7551"
-                endOffset="7569"/>
+                startOffset="7558"
+                endOffset="7576"/>
         </fix-replace>
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
             line="205"
             column="24"
-            startOffset="7551"
+            startOffset="7558"
             endLine="205"
             endColumn="42"
-            endOffset="7569"/>
+            endOffset="7576"/>
     </incident>
 
     <incident
@@ -69,10 +69,10 @@
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
             line="289"
             column="39"
-            startOffset="11444"
+            startOffset="11458"
             endLine="289"
             endColumn="84"
-            endOffset="11489"/>
+            endOffset="11503"/>
     </incident>
 
     <incident
@@ -83,10 +83,10 @@
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
             line="292"
             column="21"
-            startOffset="11609"
+            startOffset="11623"
             endLine="296"
             endColumn="22"
-            endOffset="11889"/>
+            endOffset="11903"/>
     </incident>
 
     <incident

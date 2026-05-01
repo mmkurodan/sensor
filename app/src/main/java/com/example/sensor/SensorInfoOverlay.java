@@ -39,7 +39,7 @@ public class SensorInfoOverlay extends View {
     private final List<String> sensorInfoLines = new ArrayList<>();
     private final float[] gyroValues = new float[3];
     private final RectF panelRect = new RectF();
-    private final RectF routeGraphButtonRect = new RectF();
+    private final RectF roadNetworkButtonRect = new RectF();
     private final RectF trackingButtonRect = new RectF();
     private final RectF toggleButtonRect = new RectF();
     private final RectF returnButtonRect = new RectF();
@@ -50,9 +50,9 @@ public class SensorInfoOverlay extends View {
     private float compassAzimuth = Float.NaN;
     private double altitude = Double.NaN;
     private boolean visible = true;
-    private boolean routeGraphVisible;
+    private boolean roadNetworkVisible;
     private boolean trackingCenteringEnabled = true;
-    private Runnable onRouteGraphToggleClicked;
+    private Runnable onRoadNetworkToggleClicked;
     private Runnable onReturnToLocationClicked;
     private Runnable onTrackingCenteringToggleClicked;
     private Runnable onPanelVisibilityChanged;
@@ -164,8 +164,8 @@ public class SensorInfoOverlay extends View {
         onReturnToLocationClicked = callback;
     }
 
-    public void setOnRouteGraphToggleClicked(Runnable callback) {
-        onRouteGraphToggleClicked = callback;
+    public void setOnRoadNetworkToggleClicked(Runnable callback) {
+        onRoadNetworkToggleClicked = callback;
     }
 
     public void setOnTrackingCenteringToggleClicked(Runnable callback) {
@@ -181,8 +181,8 @@ public class SensorInfoOverlay extends View {
         invalidate();
     }
 
-    public void setRouteGraphVisible(boolean visible) {
-        routeGraphVisible = visible;
+    public void setRoadNetworkVisible(boolean visible) {
+        roadNetworkVisible = visible;
         invalidate();
     }
 
@@ -212,13 +212,13 @@ public class SensorInfoOverlay extends View {
         float buttonCornerRadius = dp(12);
 
         String locationLine = sensorInfoLines.isEmpty() ? DEFAULT_LOCATION_TEXT : sensorInfoLines.get(0);
-        String routeGraphLabel = routeGraphVisible ? "経路網 ON" : "経路網 OFF";
+        String roadNetworkLabel = roadNetworkVisible ? "道路網 ON" : "道路網 OFF";
         String trackingLabel = trackingCenteringEnabled ? "追跡/中心 ON" : "追跡/中心 OFF";
         String toggleLabel = visible ? "情報を隠す" : "情報を表示";
         String returnLabel = "現在地に戻る";
 
         float maxButtonTextWidth = Math.max(
-                Math.max(buttonTextPaint.measureText(routeGraphLabel), buttonTextPaint.measureText(trackingLabel)),
+                Math.max(buttonTextPaint.measureText(roadNetworkLabel), buttonTextPaint.measureText(trackingLabel)),
                 Math.max(buttonTextPaint.measureText(toggleLabel), buttonTextPaint.measureText(returnLabel))
         );
         float buttonWidth = Math.max(dp(128), maxButtonTextWidth + buttonHorizontalPadding * 2f);
@@ -230,13 +230,13 @@ public class SensorInfoOverlay extends View {
         float toggleButtonBottom = height - bottomMargin;
         float returnButtonBottom = toggleButtonBottom - buttonHeight - buttonVerticalSpacing;
         float trackingButtonBottom = returnButtonBottom - buttonHeight - buttonVerticalSpacing;
-        float routeGraphButtonBottom = trackingButtonBottom - buttonHeight - buttonVerticalSpacing;
+        float roadNetworkButtonBottom = trackingButtonBottom - buttonHeight - buttonVerticalSpacing;
 
-        routeGraphButtonRect.set(
+        roadNetworkButtonRect.set(
                 buttonLeft,
-                routeGraphButtonBottom - buttonHeight,
+                roadNetworkButtonBottom - buttonHeight,
                 buttonRight,
-                routeGraphButtonBottom
+                roadNetworkButtonBottom
         );
 
         trackingButtonRect.set(
@@ -312,7 +312,7 @@ public class SensorInfoOverlay extends View {
             }
         }
 
-        drawButton(canvas, routeGraphButtonRect, routeGraphLabel, buttonCornerRadius);
+        drawButton(canvas, roadNetworkButtonRect, roadNetworkLabel, buttonCornerRadius);
         drawButton(canvas, trackingButtonRect, trackingLabel, buttonCornerRadius);
         drawButton(canvas, returnButtonRect, returnLabel, buttonCornerRadius);
         drawButton(canvas, toggleButtonRect, toggleLabel, buttonCornerRadius);
@@ -485,15 +485,15 @@ public class SensorInfoOverlay extends View {
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                return routeGraphButtonRect.contains(x, y)
+                return roadNetworkButtonRect.contains(x, y)
                         || trackingButtonRect.contains(x, y)
                         || returnButtonRect.contains(x, y)
                         || toggleButtonRect.contains(x, y);
             case MotionEvent.ACTION_UP:
-                if (routeGraphButtonRect.contains(x, y)) {
+                if (roadNetworkButtonRect.contains(x, y)) {
                     performClick();
-                    if (onRouteGraphToggleClicked != null) {
-                        onRouteGraphToggleClicked.run();
+                    if (onRoadNetworkToggleClicked != null) {
+                        onRoadNetworkToggleClicked.run();
                     }
                     return true;
                 }
