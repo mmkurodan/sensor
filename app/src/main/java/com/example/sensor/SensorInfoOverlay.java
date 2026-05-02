@@ -32,6 +32,11 @@ public class SensorInfoOverlay extends View {
     private final Paint labelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint directionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint southMarkerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint speedGaugeBackgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint speedGaugeStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint speedGaugeFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint speedGaugeValuePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint speedGaugeLabelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint altitudeBackgroundPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint altitudeStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint altitudeFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -39,7 +44,7 @@ public class SensorInfoOverlay extends View {
     private final List<String> sensorInfoLines = new ArrayList<>();
     private final float[] gyroValues = new float[3];
     private final RectF panelRect = new RectF();
-    private final RectF roadNetworkButtonRect = new RectF();
+    private final RectF routeModeButtonRect = new RectF();
     private final RectF trackingButtonRect = new RectF();
     private final RectF toggleButtonRect = new RectF();
     private final RectF returnButtonRect = new RectF();
@@ -49,10 +54,11 @@ public class SensorInfoOverlay extends View {
 
     private float compassAzimuth = Float.NaN;
     private double altitude = Double.NaN;
+    private double speedKmh = Double.NaN;
     private boolean visible = true;
-    private boolean roadNetworkVisible;
+    private RoadNetworkRouter.TravelMode travelMode = RoadNetworkRouter.TravelMode.DRIVING;
     private boolean trackingCenteringEnabled = true;
-    private Runnable onRoadNetworkToggleClicked;
+    private Runnable onTravelModeToggleClicked;
     private Runnable onReturnToLocationClicked;
     private Runnable onTrackingCenteringToggleClicked;
     private Runnable onPanelVisibilityChanged;
@@ -114,6 +120,24 @@ public class SensorInfoOverlay extends View {
         southMarkerPaint.setColor(Color.WHITE);
         southMarkerPaint.setStyle(Paint.Style.FILL);
 
+        speedGaugeBackgroundPaint.setColor(Color.parseColor("#2E2E2E"));
+        speedGaugeBackgroundPaint.setStyle(Paint.Style.FILL);
+
+        speedGaugeStrokePaint.setColor(Color.parseColor("#4FC3F7"));
+        speedGaugeStrokePaint.setStyle(Paint.Style.STROKE);
+        speedGaugeStrokePaint.setStrokeWidth(dp(2));
+
+        speedGaugeFillPaint.setColor(Color.parseColor("#00E676"));
+        speedGaugeFillPaint.setStyle(Paint.Style.FILL);
+
+        speedGaugeValuePaint.setColor(Color.WHITE);
+        speedGaugeValuePaint.setTextSize(sp(28));
+        speedGaugeValuePaint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+
+        speedGaugeLabelPaint.setColor(Color.parseColor("#4FC3F7"));
+        speedGaugeLabelPaint.setTextSize(sp(11));
+        speedGaugeLabelPaint.setTypeface(Typeface.DEFAULT_BOLD);
+
         altitudeBackgroundPaint.setColor(Color.parseColor("#2E2E2E"));
         altitudeBackgroundPaint.setStyle(Paint.Style.FILL);
 
@@ -136,6 +160,11 @@ public class SensorInfoOverlay extends View {
 
     public void setAltitude(double alt) {
         altitude = alt;
+        invalidate();
+    }
+
+    public void setSpeedKmh(double speedKmh) {
+        this.speedKmh = speedKmh;
         invalidate();
     }
 
@@ -164,8 +193,8 @@ public class SensorInfoOverlay extends View {
         onReturnToLocationClicked = callback;
     }
 
-    public void setOnRoadNetworkToggleClicked(Runnable callback) {
-        onRoadNetworkToggleClicked = callback;
+    public void setOnTravelModeToggleClicked(Runnable callback) {
+        onTravelModeToggleClicked = callback;
     }
 
     public void setOnTrackingCenteringToggleClicked(Runnable callback) {
@@ -181,8 +210,10 @@ public class SensorInfoOverlay extends View {
         invalidate();
     }
 
-    public void setRoadNetworkVisible(boolean visible) {
-        roadNetworkVisible = visible;
+    public void setTravelMode(RoadNetworkRouter.TravelMode travelMode) {
+        this.travelMode = travelMode == null
+                ? RoadNetworkRouter.TravelMode.DRIVING
+                : travelMode;
         invalidate();
     }
 
@@ -212,13 +243,15 @@ public class SensorInfoOverlay extends View {
         float buttonCornerRadius = dp(12);
 
         String locationLine = sensorInfoLines.isEmpty() ? DEFAULT_LOCATION_TEXT : sensorInfoLines.get(0);
-        String roadNetworkLabel = roadNetworkVisible ? "道路網 ON" : "道路網 OFF";
+        String routeModeLabel = travelMode == RoadNetworkRouter.TravelMode.WALKING
+                ? "経路: 歩行"
+                : "経路: 自動車";
         String trackingLabel = trackingCenteringEnabled ? "追跡/中心 ON" : "追跡/中心 OFF";
         String toggleLabel = visible ? "情報を隠す" : "情報を表示";
         String returnLabel = "現在地に戻る";
 
         float maxButtonTextWidth = Math.max(
-                Math.max(buttonTextPaint.measureText(roadNetworkLabel), buttonTextPaint.measureText(trackingLabel)),
+                Math.max(buttonTextPaint.measureText(routeModeLabel), buttonTextPaint.measureText(trackingLabel)),
                 Math.max(buttonTextPaint.measureText(toggleLabel), buttonTextPaint.measureText(returnLabel))
         );
         float buttonWidth = Math.max(dp(128), maxButtonTextWidth + buttonHorizontalPadding * 2f);
@@ -230,13 +263,13 @@ public class SensorInfoOverlay extends View {
         float toggleButtonBottom = height - bottomMargin;
         float returnButtonBottom = toggleButtonBottom - buttonHeight - buttonVerticalSpacing;
         float trackingButtonBottom = returnButtonBottom - buttonHeight - buttonVerticalSpacing;
-        float roadNetworkButtonBottom = trackingButtonBottom - buttonHeight - buttonVerticalSpacing;
+        float routeModeButtonBottom = trackingButtonBottom - buttonHeight - buttonVerticalSpacing;
 
-        roadNetworkButtonRect.set(
+        routeModeButtonRect.set(
                 buttonLeft,
-                roadNetworkButtonBottom - buttonHeight,
+                routeModeButtonBottom - buttonHeight,
                 buttonRight,
-                roadNetworkButtonBottom
+                routeModeButtonBottom
         );
 
         trackingButtonRect.set(
@@ -266,6 +299,7 @@ public class SensorInfoOverlay extends View {
             float detailHeight = detailPaint.getFontSpacing();
             float labelHeight = labelPaint.getFontSpacing();
             float visualSize = width * VISUAL_SIZE_RATIO;
+            float speedGaugeHeight = dp(72);
             float altitudeGaugeHeight = visualSize * 0.6f;
             float panelHeight = calculatePanelHeight(width, locationLine);
 
@@ -277,7 +311,10 @@ public class SensorInfoOverlay extends View {
             float locationBaseline = locationTop - locationPaint.ascent();
             canvas.drawText(locationLine, panelPadding, locationBaseline, locationPaint);
 
-            float visualTop = locationTop + locationHeight + sectionSpacing;
+            float speedTop = locationTop + locationHeight + sectionSpacing;
+            drawSpeedGauge(canvas, panelPadding, speedTop, width - panelPadding * 2f, speedGaugeHeight);
+
+            float visualTop = speedTop + speedGaugeHeight + sectionSpacing;
             float visualCenterY = visualTop + visualSize / 2f;
             float compassCenterX = width * 0.30f;
             float gyroCenterX = width * 0.70f;
@@ -312,10 +349,33 @@ public class SensorInfoOverlay extends View {
             }
         }
 
-        drawButton(canvas, roadNetworkButtonRect, roadNetworkLabel, buttonCornerRadius);
+        drawButton(canvas, routeModeButtonRect, routeModeLabel, buttonCornerRadius);
         drawButton(canvas, trackingButtonRect, trackingLabel, buttonCornerRadius);
         drawButton(canvas, returnButtonRect, returnLabel, buttonCornerRadius);
         drawButton(canvas, toggleButtonRect, toggleLabel, buttonCornerRadius);
+    }
+
+    private void drawSpeedGauge(Canvas canvas, float left, float top, float width, float height) {
+        String label = "速度計";
+        float labelBaseline = top - speedGaugeLabelPaint.ascent();
+        canvas.drawText(label, left, labelBaseline, speedGaugeLabelPaint);
+
+        float barTop = labelBaseline + speedGaugeLabelPaint.descent() + dp(8);
+        float barBottom = top + height;
+        RectF gaugeRect = new RectF(left, barTop, left + width, barBottom);
+        canvas.drawRoundRect(gaugeRect, dp(12), dp(12), speedGaugeBackgroundPaint);
+        canvas.drawRoundRect(gaugeRect, dp(12), dp(12), speedGaugeStrokePaint);
+
+        if (!Double.isNaN(speedKmh) && speedKmh > 0d) {
+            float fillRatio = clamp((float) (speedKmh / 120d), 0f, 1f);
+            RectF fillRect = new RectF(left, barTop, left + (width * fillRatio), barBottom);
+            canvas.drawRoundRect(fillRect, dp(12), dp(12), speedGaugeFillPaint);
+        }
+
+        String valueText = Double.isNaN(speedKmh)
+                ? "-- km/h"
+                : String.format(Locale.getDefault(), "%.1f km/h", speedKmh);
+        drawCenteredText(canvas, valueText, gaugeRect.centerX(), gaugeRect.centerY(), speedGaugeValuePaint);
     }
 
     private void drawCompassVisual(Canvas canvas, float centerX, float centerY, float size) {
@@ -454,6 +514,7 @@ public class SensorInfoOverlay extends View {
         float labelHeight = labelPaint.getFontSpacing();
         float visualSize = width * VISUAL_SIZE_RATIO;
         float visualLabelHeight = labelHeight * 3f + dp(8);
+        float speedGaugeHeight = dp(72);
         float altitudeGaugeHeight = visualSize * 0.6f;
         float detailBlockHeight = sensorInfoLines.size() > 1
                 ? sectionSpacing + (sensorInfoLines.size() - 1) * detailHeight
@@ -461,6 +522,8 @@ public class SensorInfoOverlay extends View {
 
         return panelPadding
                 + locationHeight
+                + sectionSpacing
+                + speedGaugeHeight
                 + sectionSpacing
                 + visualSize
                 + visualLabelHeight
@@ -485,15 +548,15 @@ public class SensorInfoOverlay extends View {
 
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                return roadNetworkButtonRect.contains(x, y)
+                return routeModeButtonRect.contains(x, y)
                         || trackingButtonRect.contains(x, y)
                         || returnButtonRect.contains(x, y)
                         || toggleButtonRect.contains(x, y);
             case MotionEvent.ACTION_UP:
-                if (roadNetworkButtonRect.contains(x, y)) {
+                if (routeModeButtonRect.contains(x, y)) {
                     performClick();
-                    if (onRoadNetworkToggleClicked != null) {
-                        onRoadNetworkToggleClicked.run();
+                    if (onTravelModeToggleClicked != null) {
+                        onTravelModeToggleClicked.run();
                     }
                     return true;
                 }

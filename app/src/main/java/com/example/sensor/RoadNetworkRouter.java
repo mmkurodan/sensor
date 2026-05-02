@@ -28,22 +28,26 @@ import java.util.regex.Pattern;
 public class RoadNetworkRouter {
 
     private static final String OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter";
-    private static final String ROUTE_SUMMARY_DRIVING = "道路経路";
+    private static final String ROUTE_SUMMARY_DRIVING = "自動車経路";
+    private static final String ROUTE_SUMMARY_WALKING = "徒歩経路";
     private static final String ROUTE_SUMMARY_EXPRESSWAY = "高速優先";
     private static final double ROUTE_PADDING_RATIO = 0.20d;
     private static final double MIN_PADDING_METERS = 120d;
     private static final double MAX_PADDING_METERS = 5_000d;
     private static final double MAX_ENDPOINT_SNAP_DISTANCE_METERS = 400d;
     private static final double DEFAULT_APPROACH_SPEED_METERS_PER_SECOND = 8.33d;
+    private static final double DEFAULT_WALKING_SPEED_METERS_PER_SECOND = 1.39d;
     private static final double MAX_ROUTE_SPEED_METERS_PER_SECOND = 33.33d;
+    private static final double MAX_WALKING_ROUTE_SPEED_METERS_PER_SECOND = 1.67d;
     private static final double HIGHWAY_ROUTE_THRESHOLD_METERS = 10_000d;
-    private static final long MAX_DOWNLOAD_BYTES = 5L * 1024L * 1024L * 1024L;
+    private static final long MAX_DOWNLOAD_BYTES = 16L * 1024L * 1024L;
     private static final int MAX_INTERCHANGE_CANDIDATES = 4;
     private static final Pattern SPEED_PATTERN = Pattern.compile("([0-9]+(?:\\.[0-9]+)?)");
 
     private final String userAgent;
 
     private RoadNetwork cachedDrivingNetwork;
+    private RoadNetwork cachedWalkingNetwork;
     private RoadNetwork cachedMotorwayNetwork;
 
     public RoadNetworkRouter(Context context) {
@@ -51,21 +55,31 @@ public class RoadNetworkRouter {
     }
 
     public synchronized RouteResult findRoute(GeoPoint origin, GeoPoint destination) throws IOException {
+        return findRoute(origin, destination, TravelMode.DRIVING);
+    }
+
+    public synchronized RouteResult findRoute(
+            GeoPoint origin,
+            GeoPoint destination,
+            TravelMode travelMode
+    ) throws IOException {
         if (origin == null || destination == null) {
             throw new IllegalArgumentException("経路の始点または終点がありません");
         }
 
+        TravelMode effectiveTravelMode = travelMode == null ? TravelMode.DRIVING : travelMode;
         QueryBounds queryBounds = QueryBounds.from(origin, destination);
-        RoadNetwork drivingNetwork = getRoadNetwork(RouteProfile.DRIVING, queryBounds);
+        if (effectiveTravelMode == TravelMode.WALKING) {
+            RoadNetwork walkingNetwork = getRoadNetwork(RouteProfile.WALKING, queryBounds);
+            return walkingNetwork.findRoute(origin, destination, ROUTE_SUMMARY_WALKING);
+        }
 
         if (origin.distanceToAsDouble(destination) >= HIGHWAY_ROUTE_THRESHOLD_METERS) {
             try {
-                RoadNetwork motorwayNetwork = getRoadNetwork(RouteProfile.MOTORWAY, queryBounds);
                 RouteResult expresswayPreferredRoute = findExpresswayPreferredRoute(
                         origin,
                         destination,
-                        drivingNetwork,
-                        motorwayNetwork
+                        queryBounds
                 );
                 if (expresswayPreferredRoute != null) {
                     return expresswayPreferredRoute;
@@ -75,34 +89,57 @@ public class RoadNetworkRouter {
             }
         }
 
+        RoadNetwork drivingNetwork = getRoadNetwork(RouteProfile.DRIVING, queryBounds);
         return drivingNetwork.findRoute(origin, destination, ROUTE_SUMMARY_DRIVING);
     }
 
     public synchronized void clearCache() {
         cachedDrivingNetwork = null;
+        cachedWalkingNetwork = null;
         cachedMotorwayNetwork = null;
     }
 
     private RouteResult findExpresswayPreferredRoute(
             GeoPoint origin,
             GeoPoint destination,
-            RoadNetwork drivingNetwork,
-            RoadNetwork motorwayNetwork
-    ) {
-        List<InterchangeCandidate> originCandidates = collectInterchangeCandidates(origin, drivingNetwork, motorwayNetwork);
-        List<InterchangeCandidate> destinationCandidates = collectInterchangeCandidates(destination, drivingNetwork, motorwayNetwork);
+            QueryBounds routeBounds
+    ) throws IOException {
+        RoadNetwork motorwayNetwork = getRoadNetwork(RouteProfile.MOTORWAY, routeBounds);
+        List<InterchangeCandidate> originCandidates = collectInterchangeCandidates(origin, motorwayNetwork);
+        List<InterchangeCandidate> destinationCandidates = collectInterchangeCandidates(destination, motorwayNetwork);
         if (originCandidates.isEmpty() || destinationCandidates.isEmpty()) {
             return null;
         }
 
+        HashMap<Long, RoadNetwork> originApproachNetworks = new HashMap<>();
+        HashMap<Long, RoadNetwork> destinationApproachNetworks = new HashMap<>();
         RouteResult bestRoute = null;
         double bestDurationSeconds = Double.POSITIVE_INFINITY;
         for (InterchangeCandidate originCandidate : originCandidates) {
+            RoadNetwork originDrivingNetwork = getApproachNetwork(
+                    originApproachNetworks,
+                    origin,
+                    originCandidate.motorwayNode
+            );
+            GraphNode originDrivingNode = originDrivingNetwork.findNodeById(originCandidate.motorwayNode.id);
+            if (originDrivingNode == null) {
+                continue;
+            }
             for (InterchangeCandidate destinationCandidate : destinationCandidates) {
                 try {
-                    RouteResult originApproach = drivingNetwork.findRoute(
+                    RoadNetwork destinationDrivingNetwork = getApproachNetwork(
+                            destinationApproachNetworks,
+                            destination,
+                            destinationCandidate.motorwayNode
+                    );
+                    GraphNode destinationDrivingNode = destinationDrivingNetwork.findNodeById(destinationCandidate.motorwayNode.id);
+                    if (destinationDrivingNode == null) {
+                        continue;
+                    }
+
+                    RouteResult originApproach = originDrivingNetwork.findRoute(
                             origin,
-                            originCandidate.drivingNode,
+                            originDrivingNode,
                             ROUTE_SUMMARY_EXPRESSWAY
                     );
                     RouteResult motorwaySegment = motorwayNetwork.findRoute(
@@ -110,8 +147,8 @@ public class RoadNetworkRouter {
                             destinationCandidate.motorwayNode,
                             ROUTE_SUMMARY_EXPRESSWAY
                     );
-                    RouteResult destinationApproach = drivingNetwork.findRoute(
-                            destinationCandidate.drivingNode,
+                    RouteResult destinationApproach = destinationDrivingNetwork.findRoute(
+                            destinationDrivingNode,
                             destination,
                             ROUTE_SUMMARY_EXPRESSWAY
                     );
@@ -134,21 +171,33 @@ public class RoadNetworkRouter {
         return bestRoute;
     }
 
+    private RoadNetwork getApproachNetwork(
+            HashMap<Long, RoadNetwork> approachNetworks,
+            GeoPoint endpoint,
+            GraphNode interchangeNode
+    ) throws IOException {
+        RoadNetwork cachedNetwork = approachNetworks.get(interchangeNode.id);
+        if (cachedNetwork != null) {
+            return cachedNetwork;
+        }
+
+        RoadNetwork approachNetwork = getRoadNetwork(
+                RouteProfile.DRIVING,
+                QueryBounds.from(endpoint, interchangeNode.point)
+        );
+        approachNetworks.put(interchangeNode.id, approachNetwork);
+        return approachNetwork;
+    }
+
     private List<InterchangeCandidate> collectInterchangeCandidates(
             GeoPoint point,
-            RoadNetwork drivingNetwork,
             RoadNetwork motorwayNetwork
     ) {
         List<InterchangeCandidate> candidates = new ArrayList<>();
-        for (GraphNode drivingNode : drivingNetwork.getInterchangeNodes()) {
-            GraphNode motorwayNode = motorwayNetwork.findNodeById(drivingNode.id);
-            if (motorwayNode == null) {
-                continue;
-            }
+        for (GraphNode motorwayNode : motorwayNetwork.getInterchangeNodes()) {
             candidates.add(new InterchangeCandidate(
-                    drivingNode,
                     motorwayNode,
-                    point.distanceToAsDouble(drivingNode.point)
+                    point.distanceToAsDouble(motorwayNode.point)
             ));
         }
         candidates.sort(Comparator.comparingDouble(candidate -> candidate.straightLineDistanceMeters));
@@ -203,6 +252,8 @@ public class RoadNetworkRouter {
     private RoadNetwork getRoadNetwork(RouteProfile profile, QueryBounds queryBounds) throws IOException {
         RoadNetwork cachedNetwork = profile == RouteProfile.MOTORWAY
                 ? cachedMotorwayNetwork
+                : profile == RouteProfile.WALKING
+                ? cachedWalkingNetwork
                 : cachedDrivingNetwork;
         if (cachedNetwork != null && cachedNetwork.covers(queryBounds)) {
             return cachedNetwork;
@@ -211,6 +262,8 @@ public class RoadNetworkRouter {
         RoadNetwork downloadedNetwork = downloadRoadNetwork(profile, queryBounds);
         if (profile == RouteProfile.MOTORWAY) {
             cachedMotorwayNetwork = downloadedNetwork;
+        } else if (profile == RouteProfile.WALKING) {
+            cachedWalkingNetwork = downloadedNetwork;
         } else {
             cachedDrivingNetwork = downloadedNetwork;
         }
@@ -268,7 +321,7 @@ public class RoadNetworkRouter {
         while ((read = stream.read(buffer)) != -1) {
             totalBytes += read;
             if (totalBytes > MAX_DOWNLOAD_BYTES) {
-                throw new IOException("道路データが 5GB を超えるため適用しません");
+                throw new IOException("道路データが大きすぎるため経路探索を中止しました");
             }
             outputStream.write(buffer, 0, read);
         }
@@ -276,9 +329,14 @@ public class RoadNetworkRouter {
     }
 
     private String buildOverpassQuery(RouteProfile profile, QueryBounds queryBounds) {
-        String highwayFilter = profile == RouteProfile.MOTORWAY
-                ? "motorway|motorway_link"
-                : "motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|unclassified|residential|living_street|road|service";
+        String highwayFilter;
+        if (profile == RouteProfile.MOTORWAY) {
+            highwayFilter = "motorway|motorway_link";
+        } else if (profile == RouteProfile.WALKING) {
+            highwayFilter = "primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|unclassified|residential|living_street|road|service|track|path|footway|pedestrian|steps";
+        } else {
+            highwayFilter = "motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|unclassified|residential|living_street|road|service";
+        }
         return String.format(
                 Locale.US,
                 "[out:json][timeout:25];"
@@ -339,15 +397,14 @@ public class RoadNetworkRouter {
             HashMap<Long, GraphNode> graphNodesById = new HashMap<>();
             List<GraphNode> graphNodes = new ArrayList<>();
             List<RoadSegment> roadSegments = new ArrayList<>();
-            HashSet<String> segmentKeys = new HashSet<>();
 
             for (WayDefinition way : ways) {
                 if (!isRoutableWay(way.tags, profile)) {
                     continue;
                 }
 
-                EdgeDirection direction = resolveEdgeDirection(way.tags);
-                double speedMetersPerSecond = resolveSpeedMetersPerSecond(way.tags);
+                EdgeDirection direction = resolveEdgeDirection(way.tags, profile);
+                double speedMetersPerSecond = resolveSpeedMetersPerSecond(way.tags, profile);
                 for (int nodeIndex = 1; nodeIndex < way.nodeIds.length(); nodeIndex++) {
                     long previousNodeId = way.nodeIds.getLong(nodeIndex - 1);
                     long currentNodeId = way.nodeIds.getLong(nodeIndex);
@@ -372,17 +429,10 @@ public class RoadNetworkRouter {
                     if (direction.allowsBackward()) {
                         currentNode.edges.add(new GraphEdge(previousNode, edgeDistance, durationSeconds));
                     }
-
-                    String segmentKey = previousNodeId < currentNodeId
-                            ? previousNodeId + ":" + currentNodeId
-                            : currentNodeId + ":" + previousNodeId;
-                    if (segmentKeys.add(segmentKey)) {
-                        roadSegments.add(new RoadSegment(previousPoint, currentPoint));
-                    }
                 }
             }
 
-            if (graphNodes.size() < 2 || roadSegments.isEmpty()) {
+            if (graphNodes.size() < 2) {
                 throw new IOException("経路探索に使える道路データが不足しています");
             }
 
@@ -418,6 +468,40 @@ public class RoadNetworkRouter {
             return false;
         }
 
+        String access = normalizeTagValue(tags.optString("access", ""));
+        if ("no".equals(access) || "private".equals(access)) {
+            return false;
+        }
+
+        if (profile == RouteProfile.WALKING) {
+            if (!"primary".equals(highway)
+                    && !"primary_link".equals(highway)
+                    && !"secondary".equals(highway)
+                    && !"secondary_link".equals(highway)
+                    && !"tertiary".equals(highway)
+                    && !"tertiary_link".equals(highway)
+                    && !"unclassified".equals(highway)
+                    && !"residential".equals(highway)
+                    && !"living_street".equals(highway)
+                    && !"road".equals(highway)
+                    && !"service".equals(highway)
+                    && !"track".equals(highway)
+                    && !"path".equals(highway)
+                    && !"footway".equals(highway)
+                    && !"pedestrian".equals(highway)
+                    && !"steps".equals(highway)) {
+                return false;
+            }
+
+            String foot = normalizeTagValue(tags.optString("foot", ""));
+            if ("no".equals(foot) || "private".equals(foot) || "use_sidepath".equals(foot)) {
+                return false;
+            }
+
+            String pedestrian = normalizeTagValue(tags.optString("pedestrian", ""));
+            return !"no".equals(pedestrian) && !"private".equals(pedestrian);
+        }
+
         if (profile == RouteProfile.MOTORWAY) {
             if (!"motorway".equals(highway) && !"motorway_link".equals(highway)) {
                 return false;
@@ -437,11 +521,6 @@ public class RoadNetworkRouter {
                 && !"living_street".equals(highway)
                 && !"road".equals(highway)
                 && !"service".equals(highway)) {
-            return false;
-        }
-
-        String access = normalizeTagValue(tags.optString("access", ""));
-        if ("no".equals(access) || "private".equals(access)) {
             return false;
         }
 
@@ -466,7 +545,11 @@ public class RoadNetworkRouter {
         return "motorway_junction".equals(normalizeTagValue(tags.optString("highway", "")));
     }
 
-    private EdgeDirection resolveEdgeDirection(JSONObject tags) {
+    private EdgeDirection resolveEdgeDirection(JSONObject tags, RouteProfile profile) {
+        if (profile == RouteProfile.WALKING) {
+            return EdgeDirection.BIDIRECTIONAL;
+        }
+
         String directionTag = firstNonBlank(
                 tags.optString("oneway:motor_vehicle", ""),
                 tags.optString("oneway:vehicle", ""),
@@ -490,7 +573,18 @@ public class RoadNetworkRouter {
         return EdgeDirection.BIDIRECTIONAL;
     }
 
-    private double resolveSpeedMetersPerSecond(JSONObject tags) {
+    private double resolveSpeedMetersPerSecond(JSONObject tags, RouteProfile profile) {
+        if (profile == RouteProfile.WALKING) {
+            String highway = normalizeTagValue(tags.optString("highway", ""));
+            if ("steps".equals(highway)) {
+                return 0.9d;
+            }
+            if ("path".equals(highway) || "track".equals(highway)) {
+                return 1.11d;
+            }
+            return DEFAULT_WALKING_SPEED_METERS_PER_SECOND;
+        }
+
         double taggedSpeed = parseMaxSpeedMetersPerSecond(firstNonBlank(
                 tags.optString("maxspeed:forward", ""),
                 tags.optString("maxspeed", "")
@@ -683,6 +777,7 @@ public class RoadNetworkRouter {
         private final List<GraphNode> graphNodes;
         private final List<RoadSegment> roadSegments;
         private final List<GraphNode> interchangeNodes;
+        private final double maxRouteSpeedMetersPerSecond;
 
         private RoadNetwork(
                 RouteProfile profile,
@@ -698,6 +793,9 @@ public class RoadNetworkRouter {
             this.graphNodes = graphNodes;
             this.roadSegments = roadSegments;
             this.interchangeNodes = interchangeNodes;
+            this.maxRouteSpeedMetersPerSecond = profile == RouteProfile.WALKING
+                    ? MAX_WALKING_ROUTE_SPEED_METERS_PER_SECOND
+                    : MAX_ROUTE_SPEED_METERS_PER_SECOND;
         }
 
         private boolean covers(QueryBounds requestedBounds) {
@@ -858,7 +956,7 @@ public class RoadNetworkRouter {
         }
 
         private double estimateRemainingDurationSeconds(GraphNode currentNode, GraphNode destinationNode) {
-            return currentNode.point.distanceToAsDouble(destinationNode.point) / MAX_ROUTE_SPEED_METERS_PER_SECOND;
+            return currentNode.point.distanceToAsDouble(destinationNode.point) / maxRouteSpeedMetersPerSecond;
         }
 
         private double calculateApproachDuration(GeoPoint startPoint, GeoPoint endPoint) {
@@ -875,12 +973,10 @@ public class RoadNetworkRouter {
     }
 
     private static class InterchangeCandidate {
-        private final GraphNode drivingNode;
         private final GraphNode motorwayNode;
         private final double straightLineDistanceMeters;
 
-        private InterchangeCandidate(GraphNode drivingNode, GraphNode motorwayNode, double straightLineDistanceMeters) {
-            this.drivingNode = drivingNode;
+        private InterchangeCandidate(GraphNode motorwayNode, double straightLineDistanceMeters) {
             this.motorwayNode = motorwayNode;
             this.straightLineDistanceMeters = straightLineDistanceMeters;
         }
@@ -966,7 +1062,23 @@ public class RoadNetworkRouter {
 
     private enum RouteProfile {
         DRIVING,
+        WALKING,
         MOTORWAY
+    }
+
+    public enum TravelMode {
+        DRIVING("自動車"),
+        WALKING("歩行");
+
+        private final String label;
+
+        TravelMode(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
     }
 
     private enum EdgeDirection {

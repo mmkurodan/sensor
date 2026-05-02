@@ -69,7 +69,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     private Marker gpsMarker;
     private Marker destinationMarker;
     private Polyline routePolyline;
-    private RoadNetworkOverlay roadNetworkOverlay;
     private StraightLineOverlay straightLineOverlay;
     private SensorInfoOverlay sensorInfoOverlay;
     private PlatformAddressGeocoder addressGeocoder;
@@ -86,10 +85,10 @@ public class MainActivity extends Activity implements SensorEventListener {
     private final float[] orientationAngles = new float[3];
     private boolean hasAccelerometerReading;
     private boolean hasMagneticReading;
-    private boolean roadNetworkOverlayEnabled;
     private boolean trackingEnabled = true;
     private boolean centeringEnabled = true;
     private float smoothedAzimuth = Float.NaN;
+    private double currentSpeedKmh = Double.NaN;
     private GeoPoint lastGpsLocation;
     private GeoPoint destinationLocation;
     private GeoPoint lastRouteOrigin;
@@ -97,6 +96,8 @@ public class MainActivity extends Activity implements SensorEventListener {
     private long lastRouteRequestElapsedMs;
     private int routeRequestGeneration;
     private String routeSummaryLine;
+    private Location lastSpeedSample;
+    private RoadNetworkRouter.TravelMode travelMode = RoadNetworkRouter.TravelMode.DRIVING;
 
     private final LocationListener gpsLocationListener = new LocationListener() {
         @Override
@@ -148,7 +149,7 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         sensorInfoOverlay = new SensorInfoOverlay(this);
         sensorInfoOverlay.setOnReturnToLocationClicked(this::recenterOnCurrentLocation);
-        sensorInfoOverlay.setOnRoadNetworkToggleClicked(this::toggleRoadNetworkOverlay);
+        sensorInfoOverlay.setOnTravelModeToggleClicked(this::toggleTravelMode);
         sensorInfoOverlay.setOnTrackingCenteringToggleClicked(this::toggleTrackingAndCentering);
         sensorInfoOverlay.setOnPanelVisibilityChanged(() -> {
             if (centeringEnabled && lastGpsLocation != null) {
@@ -163,7 +164,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         root.addView(sensorInfoOverlay);
 
         setContentView(root);
-        updateRoadNetworkOverlayToggle();
+        updateTravelModeToggle();
         updateTrackingCenteringToggle();
     }
 
@@ -194,7 +195,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         createdMapView.getController().setCenter(DEFAULT_START_POINT);
         createdMapView.getMapOverlay().setEnabled(true);
 
-        roadNetworkOverlay = new RoadNetworkOverlay(this);
         straightLineOverlay = new StraightLineOverlay(this);
         routePolyline = new Polyline();
         routePolyline.getOutlinePaint().setColor(Color.parseColor("#FF7043"));
@@ -216,7 +216,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         destinationMarker.setVisible(false);
 
         createdMapView.getOverlays().add(new CoordinateGridOverlay(this));
-        createdMapView.getOverlays().add(roadNetworkOverlay);
         createdMapView.getOverlays().add(routePolyline);
         createdMapView.getOverlays().add(straightLineOverlay);
         createdMapView.getOverlays().add(createDestinationSelectionOverlay());
@@ -496,9 +495,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         if (routePolyline != null) {
             routePolyline.setPoints(new ArrayList<>());
         }
-        if (roadNetworkOverlay != null) {
-            roadNetworkOverlay.clear();
-        }
         activeRoutePoints.clear();
         straightLineOverlay.setLine(lastGpsLocation, destinationLocation, formatDistanceValue(distanceMeters));
         routeSummaryLine = "直線距離: " + formatDistanceValue(distanceMeters);
@@ -522,9 +518,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
         if (straightLineOverlay != null) {
             straightLineOverlay.clear();
-        }
-        if (roadNetworkOverlay != null) {
-            roadNetworkOverlay.clear();
         }
         updateSensorInfoDisplay();
         if (mapView != null) {
@@ -606,13 +599,41 @@ public class MainActivity extends Activity implements SensorEventListener {
 
     private String formatRouteSummary(RoadNetworkRouter.RouteResult routeResult) {
         if (routeResult == null) {
-            return "道路経路: -- / 推定--";
+            return travelMode == RoadNetworkRouter.TravelMode.WALKING
+                    ? "徒歩経路: -- / 推定--"
+                    : "自動車経路: -- / 推定--";
         }
         return routeResult.getSummaryLabel()
                 + ": "
                 + formatDistanceValue(routeResult.getDistanceMeters())
                 + " / 推定"
                 + formatDurationValue(routeResult.getDurationSeconds());
+    }
+
+    private void toggleTravelMode() {
+        travelMode = travelMode == RoadNetworkRouter.TravelMode.DRIVING
+                ? RoadNetworkRouter.TravelMode.WALKING
+                : RoadNetworkRouter.TravelMode.DRIVING;
+        updateTravelModeToggle();
+        clearRoute();
+
+        if (destinationLocation != null) {
+            if (lastGpsLocation != null && isGpsRoutingAvailable(false)) {
+                requestRouteToDestination(true);
+            } else {
+                updateStraightLineToDestination(true);
+            }
+        }
+
+        showToast(travelMode == RoadNetworkRouter.TravelMode.DRIVING
+                ? "自動車経路に切り替えました"
+                : "徒歩経路に切り替えました");
+    }
+
+    private void updateTravelModeToggle() {
+        if (sensorInfoOverlay != null) {
+            sensorInfoOverlay.setTravelMode(travelMode);
+        }
     }
 
     private void requestRouteToDestination(boolean adjustViewport) {
@@ -666,7 +687,11 @@ public class MainActivity extends Activity implements SensorEventListener {
 
         new Thread(() -> {
             try {
-                RoadNetworkRouter.RouteResult routeResult = roadNetworkRouter.findRoute(requestOrigin, requestDestination);
+                RoadNetworkRouter.RouteResult routeResult = roadNetworkRouter.findRoute(
+                        requestOrigin,
+                        requestDestination,
+                        travelMode
+                );
                 runOnUiThread(() -> applyRouteResult(requestId, routeResult, shouldAdjustViewport));
             } catch (IOException e) {
                 runOnUiThread(() -> applyRouteFailure(requestId, e.getMessage(), shouldAdjustViewport));
@@ -701,9 +726,6 @@ public class MainActivity extends Activity implements SensorEventListener {
         activeRoutePoints.clear();
         activeRoutePoints.addAll(routeResult.getPoints());
         routePolyline.setPoints(new ArrayList<>(activeRoutePoints));
-        if (roadNetworkOverlay != null) {
-            roadNetworkOverlay.setRoadSegments(routeResult.getRoadSegments());
-        }
         if (straightLineOverlay != null) {
             straightLineOverlay.clear();
         }
@@ -723,9 +745,6 @@ public class MainActivity extends Activity implements SensorEventListener {
             return;
         }
 
-        if (roadNetworkOverlay != null) {
-            roadNetworkOverlay.clear();
-        }
         updateStraightLineToDestination(adjustViewport);
         if (errorMessage != null && !errorMessage.trim().isEmpty()) {
             showToast(errorMessage);
@@ -747,9 +766,14 @@ public class MainActivity extends Activity implements SensorEventListener {
             return;
         }
 
+        currentSpeedKmh = resolveSpeedKmh(location);
+        lastSpeedSample = new Location(location);
         lastGpsLocation = new GeoPoint(location.getLatitude(), location.getLongitude());
-        if (sensorInfoOverlay != null && location.hasAltitude()) {
-            sensorInfoOverlay.setAltitude(location.getAltitude());
+        if (sensorInfoOverlay != null) {
+            sensorInfoOverlay.setSpeedKmh(currentSpeedKmh);
+            if (location.hasAltitude()) {
+                sensorInfoOverlay.setAltitude(location.getAltitude());
+            }
         }
 
         if (gpsMarker != null) {
@@ -847,23 +871,6 @@ public class MainActivity extends Activity implements SensorEventListener {
     private void updateTrackingCenteringToggle() {
         if (sensorInfoOverlay != null) {
             sensorInfoOverlay.setTrackingCenteringEnabled(trackingEnabled && centeringEnabled);
-        }
-    }
-
-    private void toggleRoadNetworkOverlay() {
-        roadNetworkOverlayEnabled = !roadNetworkOverlayEnabled;
-        updateRoadNetworkOverlayToggle();
-        if (mapView != null) {
-            mapView.invalidate();
-        }
-    }
-
-    private void updateRoadNetworkOverlayToggle() {
-        if (roadNetworkOverlay != null) {
-            roadNetworkOverlay.setRoadsVisible(roadNetworkOverlayEnabled);
-        }
-        if (sensorInfoOverlay != null) {
-            sensorInfoOverlay.setRoadNetworkVisible(roadNetworkOverlayEnabled);
         }
     }
 
@@ -1109,6 +1116,8 @@ public class MainActivity extends Activity implements SensorEventListener {
             return;
         }
 
+        sensorInfoOverlay.setTravelMode(travelMode);
+        sensorInfoOverlay.setSpeedKmh(currentSpeedKmh);
         List<String> sensorLines = new ArrayList<>();
         if (lastGpsLocation != null) {
             sensorLines.add(String.format(
@@ -1119,6 +1128,14 @@ public class MainActivity extends Activity implements SensorEventListener {
             ));
         } else {
             sensorLines.add("緯度: --  経度: --");
+        }
+
+        sensorLines.add(travelMode == RoadNetworkRouter.TravelMode.DRIVING
+                ? "経路モード: 自動車 / 一方通行: 考慮"
+                : "経路モード: 歩行 / 一方通行: 無視");
+
+        if (!Double.isNaN(currentSpeedKmh)) {
+            sensorLines.add(String.format(Locale.getDefault(), "速度: %.1f km/h", currentSpeedKmh));
         }
 
         if (routeSummaryLine != null) {
@@ -1150,6 +1167,23 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
 
         sensorInfoOverlay.setSensorInfo(sensorLines);
+    }
+
+    private double resolveSpeedKmh(Location location) {
+        if (location.hasSpeed()) {
+            return Math.max(0d, location.getSpeed() * 3.6d);
+        }
+        if (lastSpeedSample == null) {
+            return Double.NaN;
+        }
+
+        long elapsedMs = location.getTime() - lastSpeedSample.getTime();
+        if (elapsedMs <= 0L) {
+            return Double.NaN;
+        }
+
+        double distanceMeters = lastSpeedSample.distanceTo(location);
+        return Math.max(0d, distanceMeters / (elapsedMs / 1000d) * 3.6d);
     }
 
     @Override

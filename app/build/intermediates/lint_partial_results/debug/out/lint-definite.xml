@@ -25,17 +25,17 @@
             replacement="">
             <range
                 file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-                startOffset="7516"
-                endOffset="7533"/>
+                startOffset="9057"
+                endOffset="9074"/>
         </fix-replace>
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="204"
+            line="235"
             column="23"
-            startOffset="7516"
-            endLine="204"
+            startOffset="9057"
+            endLine="235"
             endColumn="40"
-            endOffset="7533"/>
+            endOffset="9074"/>
     </incident>
 
     <incident
@@ -48,17 +48,17 @@
             replacement="">
             <range
                 file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-                startOffset="7558"
-                endOffset="7576"/>
+                startOffset="9099"
+                endOffset="9117"/>
         </fix-replace>
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="205"
+            line="236"
             column="24"
-            startOffset="7558"
-            endLine="205"
+            startOffset="9099"
+            endLine="236"
             endColumn="42"
-            endOffset="7576"/>
+            endOffset="9117"/>
     </incident>
 
     <incident
@@ -67,12 +67,12 @@
         message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="289"
+            line="326"
             column="39"
-            startOffset="11458"
-            endLine="289"
+            startOffset="13277"
+            endLine="326"
             endColumn="84"
-            endOffset="11503"/>
+            endOffset="13322"/>
     </incident>
 
     <incident
@@ -81,12 +81,12 @@
         message="Avoid object allocations during draw/layout operations (preallocate and reuse instead)">
         <location
             file="${:app*debug*MAIN*sourceProvider*0*javaDir*0}/com/example/sensor/SensorInfoOverlay.java"
-            line="292"
+            line="329"
             column="21"
-            startOffset="11623"
-            endLine="296"
+            startOffset="13442"
+            endLine="333"
             endColumn="22"
-            endOffset="11903"/>
+            endOffset="13722"/>
     </incident>
 
     <incident

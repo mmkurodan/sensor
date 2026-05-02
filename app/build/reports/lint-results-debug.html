@@ -179,7 +179,7 @@ document.getElementById(id).style.display = 'none';
     <div class="mdl-layout__header-row">
       <span class="mdl-layout-title">Lint Report: 8 warnings</span>
       <div class="mdl-layout-spacer"></div>
-      <nav class="mdl-navigation mdl-layout--large-screen-only">Check performed at Fri May 01 09:05:04 UTC 2026 by AGP (8.2.2)</nav>
+      <nav class="mdl-navigation mdl-layout--large-screen-only">Check performed at Sat May 02 10:51:32 UTC 2026 by AGP (8.2.2)</nav>
     </div>
   </header>
   <div class="mdl-layout__drawer">
@@ -245,24 +245,24 @@ Dismiss</button>            </div>
               <div class="mdl-card__supporting-text">
 <div class="issue">
 <div class="warningslist">
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:204</span>: <span class="message">Calling <code>Canvas.getWidth()</code> is usually wrong; you should be calling <code>getWidth()</code> instead</span><br /><pre class="errorlines">
-<span class="lineno"> 201 </span>    <span class="keyword">protected</span> <span class="keyword">void</span> onDraw(Canvas canvas) {
-<span class="lineno"> 202 </span>        <span class="keyword">super</span>.onDraw(canvas);
-<span class="lineno"> 203 </span>
-<span class="caretline"><span class="lineno"> 204 </span>        <span class="keyword">float</span> width = <span class="warning">canvas.getWidth()</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 205 </span>        <span class="keyword">float</span> height = canvas.getHeight();
-<span class="lineno"> 206 </span>        <span class="keyword">float</span> outerPadding = dp(<span class="number">16</span>);
-<span class="lineno"> 207 </span>        <span class="keyword">float</span> panelPadding = dp(<span class="number">18</span>);
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:235</span>: <span class="message">Calling <code>Canvas.getWidth()</code> is usually wrong; you should be calling <code>getWidth()</code> instead</span><br /><pre class="errorlines">
+<span class="lineno"> 232 </span>    <span class="keyword">protected</span> <span class="keyword">void</span> onDraw(Canvas canvas) {
+<span class="lineno"> 233 </span>        <span class="keyword">super</span>.onDraw(canvas);
+<span class="lineno"> 234 </span>
+<span class="caretline"><span class="lineno"> 235 </span>        <span class="keyword">float</span> width = <span class="warning">canvas.getWidth()</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno"> 236 </span>        <span class="keyword">float</span> height = canvas.getHeight();
+<span class="lineno"> 237 </span>        <span class="keyword">float</span> outerPadding = dp(<span class="number">16</span>);
+<span class="lineno"> 238 </span>        <span class="keyword">float</span> panelPadding = dp(<span class="number">18</span>);
 </pre>
 
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:205</span>: <span class="message">Calling <code>Canvas.getHeight()</code> is usually wrong; you should be calling <code>getHeight()</code> instead</span><br /><pre class="errorlines">
-<span class="lineno"> 202 </span>        <span class="keyword">super</span>.onDraw(canvas);
-<span class="lineno"> 203 </span>
-<span class="lineno"> 204 </span>        <span class="keyword">float</span> width = canvas.getWidth();
-<span class="caretline"><span class="lineno"> 205 </span>        <span class="keyword">float</span> height = <span class="warning">canvas.getHeight()</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 206 </span>        <span class="keyword">float</span> outerPadding = dp(<span class="number">16</span>);
-<span class="lineno"> 207 </span>        <span class="keyword">float</span> panelPadding = dp(<span class="number">18</span>);
-<span class="lineno"> 208 </span>        <span class="keyword">float</span> sectionSpacing = dp(<span class="number">14</span>);
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:236</span>: <span class="message">Calling <code>Canvas.getHeight()</code> is usually wrong; you should be calling <code>getHeight()</code> instead</span><br /><pre class="errorlines">
+<span class="lineno"> 233 </span>        <span class="keyword">super</span>.onDraw(canvas);
+<span class="lineno"> 234 </span>
+<span class="lineno"> 235 </span>        <span class="keyword">float</span> width = canvas.getWidth();
+<span class="caretline"><span class="lineno"> 236 </span>        <span class="keyword">float</span> height = <span class="warning">canvas.getHeight()</span>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno"> 237 </span>        <span class="keyword">float</span> outerPadding = dp(<span class="number">16</span>);
+<span class="lineno"> 238 </span>        <span class="keyword">float</span> panelPadding = dp(<span class="number">18</span>);
+<span class="lineno"> 239 </span>        <span class="keyword">float</span> sectionSpacing = dp(<span class="number">14</span>);
 </pre>
 
 </div>
@@ -414,24 +414,24 @@ Dismiss</button>            </div>
 <span class="lineno"> 59 </span>        path.lineTo(cx + r * <span class="number">0.15f</span>, cy + r * <span class="number">0.5f</span>);
 </pre>
 
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:289</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
-<span class="lineno"> 286 </span>  drawGyroVisual(canvas, gyroCenterX, visualCenterY, visualSize);
-<span class="lineno"> 287 </span>
-<span class="lineno"> 288 </span>  <span class="keyword">float</span> labelTop = visualTop + visualSize + dp(<span class="number">8</span>);
-<span class="caretline"><span class="lineno"> 289 </span>  drawCenteredLines(canvas, <span class="warning"><span class="keyword">new</span> String[]{<span class="string">"コンパス"</span>, getCompassAzimuthText()}</span>, compassCenterX, labelTop, labelPaint);</span>
-<span class="lineno"> 290 </span>  drawCenteredLines(
-<span class="lineno"> 291 </span>          canvas,
-<span class="lineno"> 292 </span>          <span class="keyword">new</span> String[]{
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:326</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
+<span class="lineno"> 323 </span>  drawGyroVisual(canvas, gyroCenterX, visualCenterY, visualSize);
+<span class="lineno"> 324 </span>
+<span class="lineno"> 325 </span>  <span class="keyword">float</span> labelTop = visualTop + visualSize + dp(<span class="number">8</span>);
+<span class="caretline"><span class="lineno"> 326 </span>  drawCenteredLines(canvas, <span class="warning"><span class="keyword">new</span> String[]{<span class="string">"コンパス"</span>, getCompassAzimuthText()}</span>, compassCenterX, labelTop, labelPaint);</span>
+<span class="lineno"> 327 </span>  drawCenteredLines(
+<span class="lineno"> 328 </span>          canvas,
+<span class="lineno"> 329 </span>          <span class="keyword">new</span> String[]{
 </pre>
 
-<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:292</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
-<span class="lineno"> 289 </span>  drawCenteredLines(canvas, <span class="keyword">new</span> String[]{<span class="string">"コンパス"</span>, getCompassAzimuthText()}, compassCenterX, labelTop, labelPaint);
-<span class="lineno"> 290 </span>  drawCenteredLines(
-<span class="lineno"> 291 </span>          canvas,
-<span class="caretline"><span class="lineno"> 292 </span>          <span class="warning"><span class="keyword">new</span> String[]{</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-<span class="lineno"> 293 </span>                  <span class="string">"ジャイロ"</span>,
-<span class="lineno"> 294 </span>                  String.format(Locale.getDefault(), <span class="string">"X: %.2f  Y: %.2f"</span>, gyroValues[<span class="number">0</span>], gyroValues[<span class="number">1</span>]),
-<span class="lineno"> 295 </span>                  String.format(Locale.getDefault(), <span class="string">"Z: %.2f rad/s"</span>, gyroValues[<span class="number">2</span>])
+<span class="location"><a href="../../src/main/java/com/example/sensor/SensorInfoOverlay.java">../../src/main/java/com/example/sensor/SensorInfoOverlay.java</a>:329</span>: <span class="message">Avoid object allocations during draw/layout operations (preallocate and reuse instead)</span><br /><pre class="errorlines">
+<span class="lineno"> 326 </span>  drawCenteredLines(canvas, <span class="keyword">new</span> String[]{<span class="string">"コンパス"</span>, getCompassAzimuthText()}, compassCenterX, labelTop, labelPaint);
+<span class="lineno"> 327 </span>  drawCenteredLines(
+<span class="lineno"> 328 </span>          canvas,
+<span class="caretline"><span class="lineno"> 329 </span>          <span class="warning"><span class="keyword">new</span> String[]{</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+<span class="lineno"> 330 </span>                  <span class="string">"ジャイロ"</span>,
+<span class="lineno"> 331 </span>                  String.format(Locale.getDefault(), <span class="string">"X: %.2f  Y: %.2f"</span>, gyroValues[<span class="number">0</span>], gyroValues[<span class="number">1</span>]),
+<span class="lineno"> 332 </span>                  String.format(Locale.getDefault(), <span class="string">"Z: %.2f rad/s"</span>, gyroValues[<span class="number">2</span>])
 </pre>
 
 </div>
