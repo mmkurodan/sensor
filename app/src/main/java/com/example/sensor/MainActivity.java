@@ -112,6 +112,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         @Override
         public void onProviderDisabled(String provider) {
             showToast("GPSプロバイダが無効です");
+            clearRoute();
         }
 
         @Override
@@ -306,8 +307,21 @@ public class MainActivity extends Activity implements SensorEventListener {
         searchButton.setText("検索");
         searchButton.setOnClickListener(view -> performAddressSearch());
 
+        LinearLayout.LayoutParams searchButtonParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        searchButtonParams.rightMargin = dp(8);
+        searchButton.setLayoutParams(searchButtonParams);
+
+        Button resetButton = new Button(this);
+        resetButton.setAllCaps(false);
+        resetButton.setText("リセット");
+        resetButton.setOnClickListener(view -> resetAddressSearch());
+
         inputRow.addView(addressInput);
         inputRow.addView(searchButton);
+        inputRow.addView(resetButton);
         container.addView(inputRow);
 
         searchResultsContainer = new LinearLayout(this);
@@ -407,6 +421,16 @@ public class MainActivity extends Activity implements SensorEventListener {
         }
     }
 
+    private void resetAddressSearch() {
+        hideKeyboard();
+        if (addressInput != null) {
+            addressInput.setText("");
+            addressInput.setError(null);
+        }
+        hideSearchCandidates();
+        clearDestination();
+    }
+
     private void applyDestinationSelection(GeoPoint destination, String title, boolean updateSearchField) {
         if (destination == null) {
             return;
@@ -438,7 +462,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             stopGpsUpdates();
         }
 
-        if (lastGpsLocation != null) {
+        if (lastGpsLocation != null && isGpsRoutingAvailable(true)) {
             requestRouteToDestination(true);
         } else {
             clearRoute();
@@ -580,13 +604,29 @@ public class MainActivity extends Activity implements SensorEventListener {
         return hours + "時間" + minutes + "分";
     }
 
-    private String formatRouteSummary(double distanceMeters, double durationSeconds) {
-        return "道路経路: " + formatDistanceValue(distanceMeters) + " / 推定" + formatDurationValue(durationSeconds);
+    private String formatRouteSummary(RoadNetworkRouter.RouteResult routeResult) {
+        if (routeResult == null) {
+            return "道路経路: -- / 推定--";
+        }
+        return routeResult.getSummaryLabel()
+                + ": "
+                + formatDistanceValue(routeResult.getDistanceMeters())
+                + " / 推定"
+                + formatDurationValue(routeResult.getDurationSeconds());
     }
 
     private void requestRouteToDestination(boolean adjustViewport) {
         if (lastGpsLocation == null || destinationLocation == null) {
             clearRoute();
+            return;
+        }
+        if (!isGpsRoutingAvailable(false)) {
+            clearRoute();
+            if (adjustViewport && mapView != null) {
+                mapView.getController().setZoom(16.0);
+                mapView.getController().setCenter(destinationLocation);
+                mapView.invalidate();
+            }
             return;
         }
 
@@ -668,7 +708,7 @@ public class MainActivity extends Activity implements SensorEventListener {
             straightLineOverlay.clear();
         }
 
-        routeSummaryLine = formatRouteSummary(routeResult.getDistanceMeters(), routeResult.getDurationSeconds());
+        routeSummaryLine = formatRouteSummary(routeResult);
         updateSensorInfoDisplay();
 
         BoundingBox boundingBox = createBoundingBox(activeRoutePoints);
@@ -825,6 +865,28 @@ public class MainActivity extends Activity implements SensorEventListener {
         if (sensorInfoOverlay != null) {
             sensorInfoOverlay.setRoadNetworkVisible(roadNetworkOverlayEnabled);
         }
+    }
+
+    private boolean isGpsRoutingAvailable(boolean notifyUser) {
+        if (locationManager == null) {
+            if (notifyUser) {
+                showToast("位置情報サービスを利用できません");
+            }
+            return false;
+        }
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            if (notifyUser) {
+                showToast("位置情報にアクセスできません");
+            }
+            return false;
+        }
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+            if (notifyUser) {
+                showToast("GPSプロバイダが無効です");
+            }
+            return false;
+        }
+        return true;
     }
 
     private void startGpsAcquisitionFlow() {
