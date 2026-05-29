@@ -94,9 +94,9 @@
         severity="warning"
         message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details.">
         <fix-replace
-            description="Update targetSdkVersion to 35"
+            description="Update targetSdkVersion to 36"
             oldString="34"
-            replacement="35"/>
+            replacement="36"/>
         <location
             file="${:app*projectDir}/build.gradle"
             line="12"

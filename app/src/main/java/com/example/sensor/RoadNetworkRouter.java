@@ -27,7 +27,11 @@ import java.util.regex.Pattern;
 
 public class RoadNetworkRouter {
 
-    private static final String OVERPASS_ENDPOINT = "https://overpass-api.de/api/interpreter";
+    private static final String[] OVERPASS_ENDPOINTS = new String[]{
+            "https://overpass-api.de/api/interpreter",
+            "https://lz4.overpass-api.de/api/interpreter",
+            "https://overpass.private.coffee/api/interpreter"
+    };
     private static final String ROUTE_SUMMARY_DRIVING = "自動車経路";
     private static final String ROUTE_SUMMARY_WALKING = "徒歩経路";
     private static final String ROUTE_SUMMARY_EXPRESSWAY = "高速優先";
@@ -271,20 +275,43 @@ public class RoadNetworkRouter {
     }
 
     private RoadNetwork downloadRoadNetwork(RouteProfile profile, QueryBounds queryBounds) throws IOException {
+        IOException lastException = null;
+        String query = buildOverpassQuery(profile, queryBounds);
+        for (RequestFormat requestFormat : RequestFormat.values()) {
+            for (String endpoint : OVERPASS_ENDPOINTS) {
+                try {
+                    return downloadRoadNetwork(endpoint, requestFormat, profile, queryBounds, query);
+                } catch (IOException e) {
+                    lastException = e;
+                }
+            }
+        }
+        if (lastException != null) {
+            throw lastException;
+        }
+        throw new IOException("道路データの取得に失敗しました");
+    }
+
+    private RoadNetwork downloadRoadNetwork(
+            String endpoint,
+            RequestFormat requestFormat,
+            RouteProfile profile,
+            QueryBounds queryBounds,
+            String query
+    ) throws IOException {
         HttpURLConnection connection = null;
         try {
-            String query = buildOverpassQuery(profile, queryBounds);
-            byte[] requestBody = ("data=" + URLEncoder.encode(query, StandardCharsets.UTF_8.name()))
-                    .getBytes(StandardCharsets.UTF_8);
+            byte[] requestBody = requestFormat == RequestFormat.FORM_URLENCODED
+                    ? ("data=" + URLEncoder.encode(query, StandardCharsets.UTF_8.name())).getBytes(StandardCharsets.UTF_8)
+                    : query.getBytes(StandardCharsets.UTF_8);
 
-            connection = (HttpURLConnection) new URL(OVERPASS_ENDPOINT).openConnection();
+            connection = (HttpURLConnection) new URL(endpoint).openConnection();
             connection.setRequestMethod("POST");
             connection.setDoOutput(true);
             connection.setConnectTimeout(15_000);
             connection.setReadTimeout(25_000);
             connection.setRequestProperty("User-Agent", userAgent);
-            connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
+            connection.setRequestProperty("Content-Type", requestFormat.contentType);
             connection.setFixedLengthStreamingMode(requestBody.length);
 
             try (OutputStream outputStream = connection.getOutputStream()) {
@@ -296,17 +323,38 @@ public class RoadNetworkRouter {
                     ? connection.getInputStream()
                     : connection.getErrorStream();
             byte[] responseBytes = readResponseBytes(responseStream);
+            String responseBody = new String(responseBytes, StandardCharsets.UTF_8);
 
             if (responseCode < 200 || responseCode >= 300) {
-                throw new IOException("道路データの取得に失敗しました (" + responseCode + ")");
+                throw createResponseException(endpoint, requestFormat, responseCode, responseBody);
             }
 
-            return parseRoadNetwork(profile, queryBounds, new String(responseBytes, StandardCharsets.UTF_8));
+            String contentType = connection.getContentType();
+            if (contentType != null && contentType.toLowerCase(Locale.US).contains("html")) {
+                throw new IOException("道路データAPIが想定外の応答を返しました (" + endpoint + ")");
+            }
+
+            return parseRoadNetwork(profile, queryBounds, responseBody);
         } finally {
             if (connection != null) {
                 connection.disconnect();
             }
         }
+    }
+
+    private IOException createResponseException(
+            String endpoint,
+            RequestFormat requestFormat,
+            int responseCode,
+            String responseBody
+    ) {
+        StringBuilder message = new StringBuilder("道路データの取得に失敗しました (");
+        message.append(responseCode).append(", ").append(endpoint).append(", ").append(requestFormat.label).append(")");
+        String compactBody = responseBody == null ? "" : responseBody.replaceAll("\\s+", " ").trim();
+        if (!compactBody.isEmpty()) {
+            message.append(": ").append(compactBody, 0, Math.min(120, compactBody.length()));
+        }
+        return new IOException(message.toString());
     }
 
     private byte[] readResponseBytes(InputStream stream) throws IOException {
@@ -682,6 +730,19 @@ public class RoadNetworkRouter {
 
     private static GeoPoint copyPoint(GeoPoint point) {
         return new GeoPoint(point.getLatitude(), point.getLongitude());
+    }
+
+    private enum RequestFormat {
+        FORM_URLENCODED("application/x-www-form-urlencoded; charset=UTF-8", "form"),
+        PLAIN_TEXT("text/plain; charset=UTF-8", "plain");
+
+        private final String contentType;
+        private final String label;
+
+        RequestFormat(String contentType, String label) {
+            this.contentType = contentType;
+            this.label = label;
+        }
     }
 
     private void addPointIfSeparated(List<GeoPoint> routePoints, GeoPoint point) {

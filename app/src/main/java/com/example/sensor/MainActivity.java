@@ -55,8 +55,9 @@ public class MainActivity extends Activity implements SensorEventListener {
     private static final float MAX_COMPASS_TILT_DEGREES = 70f;
     private static final float AZIMUTH_SMOOTHING_FACTOR = 0.18f;
     private static final long ROUTE_REQUEST_MIN_INTERVAL_MS = 5000L;
-    private static final float ROUTE_REQUEST_MIN_MOVEMENT_METERS = 25f;
     private static final float ROUTE_REQUEST_MIN_DESTINATION_DELTA_METERS = 5f;
+    private static final double ROUTE_OFF_ROUTE_TOLERANCE_METERS = 35d;
+    private static final double EARTH_RADIUS_METERS = 6_371_000d;
     private static final GeoPoint DEFAULT_START_POINT = new GeoPoint(35.6762, 139.6503);
 
     private SensorManager sensorManager;
@@ -715,7 +716,61 @@ public class MainActivity extends Activity implements SensorEventListener {
         if (activeRoutePoints.isEmpty()) {
             return true;
         }
-        return origin.distanceToAsDouble(lastRouteOrigin) >= ROUTE_REQUEST_MIN_MOVEMENT_METERS;
+        return isOffRoute(origin);
+    }
+
+    private boolean isOffRoute(GeoPoint currentLocation) {
+        return calculateDistanceToRouteMeters(currentLocation) > ROUTE_OFF_ROUTE_TOLERANCE_METERS;
+    }
+
+    private double calculateDistanceToRouteMeters(GeoPoint point) {
+        if (point == null || activeRoutePoints.size() < 2) {
+            return Double.POSITIVE_INFINITY;
+        }
+
+        double nearestDistanceMeters = Double.POSITIVE_INFINITY;
+        for (int index = 1; index < activeRoutePoints.size(); index++) {
+            GeoPoint startPoint = activeRoutePoints.get(index - 1);
+            GeoPoint endPoint = activeRoutePoints.get(index);
+            nearestDistanceMeters = Math.min(
+                    nearestDistanceMeters,
+                    calculateDistanceToSegmentMeters(point, startPoint, endPoint)
+            );
+        }
+        return nearestDistanceMeters;
+    }
+
+    private double calculateDistanceToSegmentMeters(GeoPoint point, GeoPoint startPoint, GeoPoint endPoint) {
+        double referenceLatitudeRadians = Math.toRadians(
+                (point.getLatitude() + startPoint.getLatitude() + endPoint.getLatitude()) / 3d
+        );
+        double[] projectedPoint = projectToMeters(point, referenceLatitudeRadians);
+        double[] projectedStart = projectToMeters(startPoint, referenceLatitudeRadians);
+        double[] projectedEnd = projectToMeters(endPoint, referenceLatitudeRadians);
+
+        double deltaX = projectedEnd[0] - projectedStart[0];
+        double deltaY = projectedEnd[1] - projectedStart[1];
+        double segmentLengthSquared = (deltaX * deltaX) + (deltaY * deltaY);
+        if (segmentLengthSquared <= 0d) {
+            return point.distanceToAsDouble(startPoint);
+        }
+
+        double projectionFactor = ((projectedPoint[0] - projectedStart[0]) * deltaX
+                + (projectedPoint[1] - projectedStart[1]) * deltaY) / segmentLengthSquared;
+        double clampedProjectionFactor = Math.max(0d, Math.min(1d, projectionFactor));
+
+        double nearestX = projectedStart[0] + (deltaX * clampedProjectionFactor);
+        double nearestY = projectedStart[1] + (deltaY * clampedProjectionFactor);
+        return Math.hypot(projectedPoint[0] - nearestX, projectedPoint[1] - nearestY);
+    }
+
+    private double[] projectToMeters(GeoPoint point, double referenceLatitudeRadians) {
+        double latitudeRadians = Math.toRadians(point.getLatitude());
+        double longitudeRadians = Math.toRadians(point.getLongitude());
+        return new double[]{
+                longitudeRadians * EARTH_RADIUS_METERS * Math.cos(referenceLatitudeRadians),
+                latitudeRadians * EARTH_RADIUS_METERS
+        };
     }
 
     private void applyRouteResult(int requestId, RoadNetworkRouter.RouteResult routeResult, boolean adjustViewport) {
