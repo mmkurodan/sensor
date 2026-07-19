@@ -55,7 +55,7 @@ public class RoadNetworkRouter {
     private RoadNetwork cachedMotorwayNetwork;
 
     public RoadNetworkRouter(Context context) {
-        userAgent = context.getApplicationContext().getPackageName();
+        userAgent = MapServiceUserAgent.get(context.getApplicationContext());
     }
 
     public synchronized RouteResult findRoute(GeoPoint origin, GeoPoint destination) throws IOException {

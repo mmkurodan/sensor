@@ -29,7 +29,7 @@ public class PlatformAddressGeocoder {
 
     public PlatformAddressGeocoder(Context context) {
         geocoder = new Geocoder(context.getApplicationContext(), Locale.JAPAN);
-        userAgent = context.getApplicationContext().getPackageName();
+        userAgent = MapServiceUserAgent.get(context.getApplicationContext());
     }
 
     public List<SearchResult> search(String query, int limit) throws IOException {

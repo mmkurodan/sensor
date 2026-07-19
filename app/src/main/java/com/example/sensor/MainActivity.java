@@ -170,7 +170,7 @@ public class MainActivity extends Activity implements SensorEventListener {
     }
 
     private void configureOsmdroid() {
-        Configuration.getInstance().setUserAgentValue(getApplicationContext().getPackageName());
+        Configuration.getInstance().setUserAgentValue(MapServiceUserAgent.get(getApplicationContext()));
 
         java.io.File osmdroidDir = new java.io.File(getFilesDir(), "osmdroid");
         if (!osmdroidDir.exists()) {
